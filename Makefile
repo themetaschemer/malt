@@ -10,10 +10,54 @@ TEST_FLAGS=-q
 # add sources be sure to update this section.
 #----------------------------------------
 
+LEARNER_DIR=learner
 FLAT_DIR=flat-tensors
 NESTED_DIR=nested-tensors
 TOOLS_DIR=tools
 MALTED_DIR=malted
+
+# learner
+LEARNER_TENSORS_DIR=$(LEARNER_DIR)/tensors
+LEARNER_AUTODIFF_DIR=$(LEARNER_DIR)/autodiff
+LEARNER_EXT_OPS_DIR=$(LEARNER_DIR)/ext-ops
+
+LEARNER_TENSORS_SOURCES=\
+  $(LEARNER_TENSORS_DIR)/0-duals.rkt\
+  $(LEARNER_TENSORS_DIR)/B-tensor-basics.rkt\
+  $(LEARNER_TENSORS_DIR)/C-tensor-ops.rkt\
+  $(LEARNER_TENSORS_DIR)/D-extend.rkt\
+  $(LEARNER_DIR)/tensors.rkt
+
+LEARNER_AUTODIFF_SOURCES=\
+  $(LEARNER_AUTODIFF_DIR)/A-autodiff.rkt\
+  $(LEARNER_AUTODIFF_DIR)/B-prims.rkt\
+  $(LEARNER_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(LEARNER_DIR)/autodiff.rkt
+
+LEARNER_EXT_OPS_SOURCES=\
+  $(LEARNER_EXT_OPS_DIR)/A-scalar-ops.rkt\
+  $(LEARNER_EXT_OPS_DIR)/B-comparators.rkt\
+  $(LEARNER_EXT_OPS_DIR)/C-star-2-1.rkt\
+  $(LEARNER_EXT_OPS_DIR)/D-sum.rkt\
+  $(LEARNER_EXT_OPS_DIR)/E-argmax.rkt\
+  $(LEARNER_EXT_OPS_DIR)/F-max.rkt\
+  $(LEARNER_EXT_OPS_DIR)/G-correlate.rkt\
+  $(LEARNER_EXT_OPS_DIR)/H-rectify.rkt\
+  $(LEARNER_EXT_OPS_DIR)/I-nd-ops.rkt\
+  $(LEARNER_DIR)/ext-ops.rkt
+
+LEARNER_LOADERS=\
+  $(LEARNER_DIR)/no-duals-no-overrides.rkt\
+  $(LEARNER_DIR)/no-duals.rkt\
+  $(LEARNER_DIR)/no-overrides.rkt\
+  $(LEARNER_DIR)/tensors.rkt\
+  $(LEARNER_DIR)/autodiff.rkt\
+  $(LEARNER_DIR)/ext-ops.rkt
+
+LEARNER_SOURCES=$(LEARNER_TENSORS_SOURCES)\
+	$(LEARNER_AUTODIFF_SOURCES)\
+	$(LEARNER_EXT_OPS_SOURCES)\
+	$(LEARNER_LOADERS)
 
 # flat-tensors
 FLAT_TENSORS_DIR=$(FLAT_DIR)/tensors
@@ -32,6 +76,8 @@ FLAT_TENSORS_SOURCES=\
 FLAT_AUTODIFF_SOURCES=\
   $(FLAT_AUTODIFF_DIR)/A-autodiff.rkt\
   $(FLAT_AUTODIFF_DIR)/B-prims.rkt\
+  $(FLAT_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(FLAT_AUTODIFF_DIR)/D-test-helpers.rkt\
   $(FLAT_DIR)/autodiff.rkt
 
 FLAT_EXT_OPS_SOURCES=\
@@ -72,6 +118,8 @@ NESTED_TENSORS_SOURCES=\
 NESTED_AUTODIFF_SOURCES=\
   $(NESTED_AUTODIFF_DIR)/A-autodiff.rkt\
   $(NESTED_AUTODIFF_DIR)/B-prims.rkt\
+  $(NESTED_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(NESTED_AUTODIFF_DIR)/D-test-helpers.rkt\
   $(NESTED_DIR)/autodiff.rkt
 
 NESTED_EXT_OPS_SOURCES=\
@@ -124,7 +172,8 @@ MALTED_SOURCES=\
   malted.rkt
 
 # All the sources together, plus entry points
-SOURCES=$(FLAT_SOURCES)\
+SOURCES=$(LEARNER_SOURCES)\
+  $(FLAT_SOURCES)\
   $(NESTED_SOURCES)\
   $(TOOLS_SOURCES)\
   $(MALTED_SOURCES)\
