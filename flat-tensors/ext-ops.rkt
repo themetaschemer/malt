@@ -12,6 +12,9 @@
          d-expt d-exp d-log d-abs
          d-rectify d-sqrt d-sqr
 
+         +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
+         exp-0 log-0 abs-0 rectify-0
+
          +-ρ --ρ *-ρ /-ρ
          expt-ρ exp-ρ log-ρ abs-ρ
          rectify-ρ sqrt-ρ sqr-ρ)
@@ -21,7 +24,7 @@
 
 (provide d*-2-1 *-2-1-ρ)
 
-(provide d-sum sum-ρ d-sum-cols sum-cols-ρ)
+(provide sum-1 d-sum sum-ρ d-sum-cols sum-cols-ρ)
 
 (provide argmax-1 d-argmax argmax-ρ)
 

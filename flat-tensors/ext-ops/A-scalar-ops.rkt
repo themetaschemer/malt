@@ -121,7 +121,10 @@
 
 (include "test/test-A-scalar-ops.rkt")
 
-(provide d+ d- d* d/
+(provide +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
+         exp-0 log-0 abs-0 rectify-0
+
+         d+ d- d* d/
          d-expt d-exp d-log d-abs
          d-rectify d-sqrt d-sqr
 

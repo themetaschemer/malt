@@ -40,4 +40,4 @@
 
 (include "test/test-D-sum.rkt")
 
-(provide d-sum sum-ρ d-sum-cols sum-cols-ρ)
+(provide sum-1 d-sum sum-ρ d-sum-cols sum-cols-ρ)
