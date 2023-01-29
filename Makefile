@@ -139,6 +139,9 @@ TO_PRINT=$(SOURCES)
 # Where raco is installed
 RACO="$(shell which raco)"
 
+# Optional ARG when provided
+ARG=$(filter-out $@,$(MAKECMDGOALS))
+
 # Build it all
 all: build test
 
@@ -150,6 +153,9 @@ build: $(SOURCES)
 test:
 	@ echo "Running tests ..." &&\
 	$(RACO) test $(TEST_FLAGS) $(SOURCES)
+
+one:
+	-@ $(RACO) make $(ARG) && $(RACO) test $(ARG)
 
 clean:
 	find . -name 'compiled' -exec rm -rf {} \;
@@ -168,3 +174,7 @@ reinstall: uninstall install
 testOnly: $(SOURCES)
 	$(RACO) make $(SOURCES)
 	$(RACO) test `find . -name "$(module).rkt"`
+
+# Catch-all to avoid attempting making the ARG
+%:
+	-@
