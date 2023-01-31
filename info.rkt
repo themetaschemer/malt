@@ -7,3 +7,4 @@
 (define compile-omit-paths (list #rx"test/"))
 (define test-omit-paths (list #rx"test/"))
 (define pkg-authors '("Anurag Mendhekar" "Daniel P. Friedman"))
+(define scribblings '(("malt.scrbl" (multi-page))))

@@ -5,7 +5,14 @@
  "tools/B-random.rkt"
  "tools/C-logging.rkt")
 
-(provide
- (all-from-out "tools/A-hypers.rkt")
- (all-from-out "tools/B-random.rkt")
- (all-from-out "tools/C-logging.rkt"))
+(provide with-hyper with-hypers
+         declare-hyper declare-hypers grid-search
+
+         random-normal random-standard-normal
+
+         record start-logging
+         log-malt-fatal
+         log-malt-error
+         log-malt-warning
+         log-malt-info
+         log-malt-debug)

@@ -16,18 +16,33 @@
 (require "malted/N-blocks.rkt")
 (require "malted/O-init.rkt")
 
-(provide (all-from-out "malted/A-core.rkt"))
-(provide (all-from-out "malted/B-layer-fns.rkt"))
-(provide (all-from-out "malted/C-loss.rkt"))
-(provide (all-from-out "malted/D-gradient-descent.rkt"))
-(provide (all-from-out "malted/E-gd-common.rkt"))
-(provide (all-from-out "malted/F-naked.rkt"))
-(provide (all-from-out "malted/G-velocity.rkt"))
-(provide (all-from-out "malted/H-rms.rkt"))
-(provide (all-from-out "malted/I-adam.rkt"))
-(provide (all-from-out "malted/J-stochastic.rkt"))
-(provide (all-from-out "malted/K-dense.rkt"))
-(provide (all-from-out "malted/L-accuracy.rkt"))
-(provide (all-from-out "malted/M-recu.rkt"))
-(provide (all-from-out "malted/N-blocks.rkt"))
-(provide (all-from-out "malted/O-init.rkt"))
+(provide dot-product-2-1 dot-product
+         line quad linear-1-1 linear plane softmax
+         avg-cols signal-avg
+         l2-loss cross-entropy-loss kl-loss
+         with-recording
+
+         gradient-descent revise
+         revs alpha batch-size
+         set-revs! set-alpha! set-batch-size!
+
+         zeroes smooth epsilon
+         mu beta
+         set-mu! set-beta!
+
+         naked-gradient-descent
+         velocity-gradient-descent
+         rms-gradient-descent
+         adam-gradient-descent
+
+         samples sampling-obj
+
+         relu k-relu
+
+         accuracy model
+
+         recu corr k-recu
+
+         block block-fn block-ls stack-blocks
+
+         init-theta init-shape random-tensor zero-tensor)

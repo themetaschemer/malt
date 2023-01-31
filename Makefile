@@ -185,6 +185,31 @@ SOURCES=$(LEARNER_SOURCES)\
 # Files applicable to print.
 TO_PRINT=$(SOURCES)
 
+# Documentation files
+DOC_DIR=docs
+DOC_ROOT=malt.scrbl
+DOC_FILES=\
+  malt.scrbl\
+  $(DOC_DIR)/entry-points.scrbl\
+  $(DOC_DIR)/list-functions.scrbl\
+  $(DOC_DIR)/tensor-functions.scrbl\
+  $(DOC_DIR)/extension-functions.scrbl\
+  $(DOC_DIR)/autodiff-functions.scrbl\
+  $(DOC_DIR)/differentiable-operators.scrbl\
+  $(DOC_DIR)/non-differentiable-operators.scrbl\
+  $(DOC_DIR)/base-rank-operators.scrbl\
+  $(DOC_DIR)/boolean-comparators.scrbl\
+  $(DOC_DIR)/tensorized-comparators.scrbl\
+  $(DOC_DIR)/hypers.scrbl\
+  $(DOC_DIR)/loss.scrbl\
+  $(DOC_DIR)/layer.scrbl\
+  $(DOC_DIR)/gd.scrbl\
+  $(DOC_DIR)/blocks.scrbl\
+  $(DOC_DIR)/init.scrbl\
+  $(DOC_DIR)/randoms.scrbl\
+  $(DOC_DIR)/misc.scrbl\
+  $(DOC_DIR)/logging.scrbl
+
 # Where raco is installed
 RACO="$(shell which raco)"
 
@@ -208,6 +233,11 @@ one:
 
 clean:
 	find . -name 'compiled' -exec rm -rf {} \;
+
+doc: malt.html
+
+malt.html: $(DOC_FILES)
+	raco scribble +m --htmls --dest html $(DOC_ROOT)
 
 print:
 	lpr $(TO_PRINT)
