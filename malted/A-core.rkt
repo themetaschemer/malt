@@ -2,8 +2,6 @@
 
 (require "../base.rkt")
 
-(define gradient-of ∇)
-
 (define dot-product
   (λ (w t)
     (sum
@@ -16,4 +14,4 @@
 
 (include "test/test-A-core.rkt")
 
-(provide gradient-of ∇ dot-product-2-1 dot-product)
+(provide dot-product dot-product-2-1)

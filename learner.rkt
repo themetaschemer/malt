@@ -21,7 +21,7 @@
 
  ext1-∇ ext2-∇
 
- dual dual? ρ κ ∇ ∇¹
+ dual dual? ρ κ ∇ ∇¹ (rename-out (∇ gradient-of))
 
  ext1 ext2 prim1 prim2
 
@@ -37,6 +37,7 @@
              (d-max max) (d-sum-cols sum-cols) (d-correlate correlate))
 
   rectify
+
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
  exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ

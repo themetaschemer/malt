@@ -21,4 +21,4 @@
 
 (include "test/test-K-dense.rkt")
 
-(provide rectify relu k-relu)
+(provide relu k-relu)

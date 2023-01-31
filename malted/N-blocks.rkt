@@ -42,4 +42,4 @@
 
 (include "test/test-N-blocks.rkt")
 
-(provide block stack-blocks)
+(provide block block-fn block-ls stack-blocks)

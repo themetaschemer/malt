@@ -14,7 +14,7 @@
 
  ext1-ρ ext2-ρ ext1-∇ ext2-∇
 
- dual dual? ρ κ ∇ ∇¹
+ dual dual? ρ κ ∇ ∇¹ (rename-out (∇ gradient-of))
 
  ext1 ext2 prim1 prim2
 
