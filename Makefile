@@ -179,8 +179,12 @@ SOURCES=$(LEARNER_SOURCES)\
   $(MALTED_SOURCES)\
   impl.rkt\
   impl-no-duals.rkt\
+  impl-no-overrides.rkt\
+  impl-no-duals-no-overrides.rkt\
   base.rkt\
-  base-no-duals.rkt
+  base-no-duals.rkt\
+  base-no-overrides.rkt\
+  base-no-duals-no-overrides.rkt
 
 # Files applicable to print.
 TO_PRINT=$(SOURCES)

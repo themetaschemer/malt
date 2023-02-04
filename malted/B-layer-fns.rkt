@@ -31,7 +31,7 @@
 (define plane
   (λ (t)
     (λ (theta)
-      (+ (dot-product t (ref theta 0)) (ref theta 1)))))
+      (+ (dot-product (ref theta 0) t) (ref theta 1)))))
 
 (define softmax
   (λ (t)

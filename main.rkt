@@ -68,9 +68,21 @@
  with-hyper with-hypers
  declare-hyper declare-hypers grid-search
 
- mu beta revs alpha batch-size
- set-revs! set-alpha! set-batch-size!
- set-mu! set-beta!
+ ;; Gradient descent
+ revise
+ gradient-descent
+ samples sampling-obj
+ revs alpha batch-size
+
+
+ naked-gradient-descent
+
+ mu
+ velocity-gradient-descent
+
+ beta smooth epsilon
+ rms-gradient-descent
+ adam-gradient-descent
 
  ;; Layer functions
  line quad linear-1-1 linear plane softmax
@@ -80,25 +92,15 @@
  ;; Loss functions
  l2-loss cross-entropy-loss kl-loss
 
-
- ;; Gradient descent
- gradient-descent revise
- naked-gradient-descent
- velocity-gradient-descent
- rms-gradient-descent
- adam-gradient-descent
- zeroes smooth epsilon
- samples sampling-obj
-
-
  ;; Blocks and block composition
  block block-fn block-ls stack-blocks
 
  ;; Initialization of theta
- init-theta init-shape zero-tensor
+ init-theta init-shape zero-tensor zeroes
 
  ;; Model creation
  model
+
 
  ;; Classification accuracy
  accuracy
