@@ -238,10 +238,12 @@ one:
 clean:
 	find . -name 'compiled' -exec rm -rf {} \;
 
-doc: malt.html
-
-malt.html: $(DOC_FILES)
+doc: $(DOC_FILES)
+	mkdir -p html
 	raco scribble +m --htmls --dest html $(DOC_ROOT)
+
+doc-pdf: $(DOC_FILES)
+	raco scribble +m --pdf $(DOC_ROOT)
 
 print:
 	lpr $(TO_PRINT)

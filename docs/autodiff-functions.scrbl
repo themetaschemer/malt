@@ -1,18 +1,20 @@
 #lang scribble/manual
 @title{Automatic Differentiation}
 
-@defmodule[malt]
+@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
 
-[TODO: These type definitions need to be cleaned up]
-For the following, we define the types
+Automatic differentiation functions are described in terms of these types, that are described
+in #secref{overview}.
 @itemlist[
-@item{@racket[dual?] - an object made up of a @racket[tensor?] (called its real part) and a @racket[link?] (called its link)}
-@item{@racket[gradient-state?] - a hashtable from a @racket[dual?] to a @racket[tensor?]}
-@item{@racket[link?] - a function of the type
-@codeblock{(-> (dual? tensor? gradient-state?) gradient-state?)}
-}
-@item{@racket[differentiable?] - Either a @racket[dual?], or a @racket[(listof differentiable?)]}
+@item{@racket[dual?] - Duals}
+@item{@racket[link?] - Links included in a dual. Defined as the type
+@codeblock{(-> (dual? tensor? gradient-state?) gradient-state?)}}
+@item{@racket[gradient-state?] - A hashtable from @racket[dual?] to @racket[tensor?]}
+@item{@racket[differentiable?] - Either a @racket[dual?], or a @racket[(listof differentiable?)]. In the @racket[learner]
+implementation @racket[(vectorof differentiable?)] is also considered to be @racket[differentiable?], but not in other
+implementations.}
 ]
+
 
 @defproc[(dual [ρ tensor?] [κ link?]) dual?]{
 Constructs a dual with ρ as its real part, and κ as its link.
@@ -39,6 +41,8 @@ The default link that terminates gradient computation for any dual. It returns a
 new @racket[gradient-state?] that includes the mapping of @racket[d] to the addition  of @racket[z]
 and the mapping of @racket[d] in @racket[σ], if it exists, or 0.0 otherwise. If @racket[z] is not a @racket[number?],
 @racket[+-ρ] is used for the addition.
+
+In the @racket[learner] implementation, @racket[z] can only be a @racket[scalar?].
 }
 
 @defproc[(∇¹ [f (-> (differentiable? ...) differentiable?)] [t0 differentiable?] ... [tn differentiable?]) (listof tensor?)]{

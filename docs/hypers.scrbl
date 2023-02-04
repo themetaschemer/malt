@@ -1,5 +1,5 @@
 #lang scribble/manual
-@title{Hyperparameters}
+@title[#:tag "hypers"]{Hyperparameters}
 
 @defmodule[malt]
 @deftogether[(

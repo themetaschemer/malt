@@ -1,19 +1,22 @@
 #lang scribble/manual
 @title{Tensor functions}
 
-@defmodule[malt]
+@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
 
 @defproc[(scalar? [s any]) boolean?]{
-  Returns @racket[#t] if its argument is a scalar (i.e., a @racket[real?] or a @racket[dual?] with a @racket[real?] as its ρ)  .
+  Returns @racket[#t] if its argument is a scalar.
 }
+
 @defproc[(tensor? [t any]) boolean?]{
   Returns @racket[#t] if its argument is a tensor. A @racket[scalar?] is also a @racket[tensor?].
 }
+
 @defproc[(tensor [element tensor?] ...) tensor?]{
   Returns a new tensor formed from the provided @racket[element ...]
-  All provided @racket[element] must have the same @racket[shape].
+  All provided @racket[element]s must have the same shape.
 }
-@defproc[(shape [t tensor?]) (listof natural?)]{
+
+@defproc[(shape [t tensor?]) shape?]{
   If @racket[t] is a @racket[scalar?], its shape is the empty list, @racket[(list)].
   Otherwise, its shape is a list starting with the number of elements in @racket[t] followed
   by the shape of the elements of @racket[t].
@@ -76,7 +79,7 @@
   of @racket[lst] must have the same @racket[shape].
 }
 
-@defproc[(build-tensor [s (listof natural?)] [filler (-> (listof natural?) scalar?)]) tensor?]{
+@defproc[(build-tensor [s shape?] [filler (-> (listof natural?) scalar?)]) tensor?]{
   Constructs a new tensor with shape @racket[s] where each scalar is determined by invoking
   the function @racket[filler] with a list representing the position of the scalar. The list is a sequence
   of indices of the recursively nested tensor elements.
@@ -95,13 +98,13 @@
   Returns the length of the @racket[shape] of @racket[t].
 }
 
-@defproc[(reshape [s (list natural?)] [t tensor?]) tensor?]{
+@defproc[(reshape [s shape?] [t tensor?]) tensor?]{
   Attempts to rearrange the nesting of scalars in @racket[t] so that the resulting shape
-  of the rearranged tensor is @racket[s]. Fails if the rearrangement is not possible, i.e,
+  of the rearranged tensor is @racket[s]. Fails if the rearrangement is not possible, i.e.,
   when the product of the numbers in @racket[s] does not equal the total number of scalars in @racket[t].
 }
 
-@defproc[(trefs [t tensor?][b (list natural?)]) tensor?]{
+@defproc[(trefs [t tensor?][b (list (and/c natural? (</c (tlen t))))]) tensor?]{
   Here @racket[b] is a list of indices into @racket[t]. Returns a tensor
   consisting of the elements @racket{(tref t i)} for each @racket[i] in @racket[b]
   in the order of appearance in @racket[b].

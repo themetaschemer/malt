@@ -5,8 +5,7 @@ Non-differentiable versions of the functions in @secref{diffable-fns}. These fun
 don't accept duals or return duals. They are primarily used to seek better memory
 performance where automatic differentiation is not required.
 
-@defmodule[malt]
-
+@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
 
 @defproc[(+-ρ [t0 tensor?] [t1 tensor?]) tensor?]{
 Adds @racket[t0] and @racket[t1] based on binary extended function rules.
@@ -106,7 +105,7 @@ The function is undefined if @racket[t0] has rank less than 2 and @racket[t1] ha
 @defproc[(dot-product-2-1-ρ [t0 tensor?] [t1 tensor?]) tensor?]{
 When @racket[t0] is a tensor of shape @racket[(list m n)] and @racket[t1] is a tensor of shape @racket[(list n)],
 returns a tensor @italic{r} of shape @racket[(list m)] where the @racket[m] elements of @italic{r} are formed
-by from the @racket[dot-product] of each element of @racket[t0] with @racket[t1].
+by the @racket[dot-product] of each element of @racket[t0] with @racket[t1].
 
 When the ranks of @racket[t0] and @racket[t1] are higher than 2 and 1 respectively, the rules of binary extended
 functions apply.

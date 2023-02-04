@@ -20,7 +20,7 @@
 
 (define-syntax check-ρ-∇
   (syntax-rules ()
-    [(check-both (fn args ...) ans grads)
+    [(check-ρ-∇ (fn args ...) ans grads)
      (ρ-∇-checker fn (list args ...) ans grads)]))
 
 (define tolerance (make-parameter 0.0001))

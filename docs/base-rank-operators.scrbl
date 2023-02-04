@@ -1,7 +1,7 @@
 #lang scribble/manual
 @title[#:tag "base-rank-differentiable-functions"]{Base-rank (non-extended) differentiable functions}
 
-@defmodule{malt}
+@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
 
 The following functions are non-extended functions defined on tensors of the specified base-rank. No extended function rules
 apply to these functions. They can be arguments to @racket[ext1] (if unary) or @racket[ext2] (if binary). These functions
@@ -43,14 +43,14 @@ are differentiable.
   Returns @racket[0.0] if @racket[a] is less than @racket[0], or @racket[a] otherwise.
 }
 
-@defproc[(sum-1 [a tensor?]) scalar?] {
+@defproc[(sum-1 [a tensor?]) scalar?]{
   Here @racket[a] must be a tensor of rank 1. Returns the sum of all the scalars in @racket[a].
 }
 
-@defproc[(argmax-1 [a tensor?]) scalar?] {
+@defproc[(argmax-1 [a tensor?]) scalar?]{
   Here @racket[a] must be a tensor of rank 1. Returns the index of the highest scalar in @racket[a].
 }
 
-@defproc[(max-1 [a tensor?]) scalar?] {
+@defproc[(max-1 [a tensor?]) scalar?]{
   Here @racket[a] must be a tensor of rank 1. Returns the highest scalar in @racket[a].
 }

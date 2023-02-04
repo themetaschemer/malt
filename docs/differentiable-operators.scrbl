@@ -1,80 +1,115 @@
 #lang scribble/manual
 @title[#:tag "diffable-fns"]{Differentiable extended numerical functions}
 
-@defmodule[malt]
+@defmodule*[(malt malt/base malt/base-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
 
 The gradients of functions constructed from the following functions as primitives can be
 computed using @racket[∇] @racket[∇¹] or @racket[gradient-of].
 
-@defproc[(+ [t0 tensor?] [t1 tensor?]) tensor?]{
+@section[#:tag "overridden"]{Extended operators}
+@defproc*[([(+ [t0 tensor?] [t1 tensor?]) tensor?]
+           [(d+ [t0 tensor?] [t1 tensor?]) tensor?])]{
 Adds @racket[t0] and @racket[t1] based on binary extended function rules.
 
 The same as @racket[(ext2 +-0-0 0 0)].
+
+When using @racket[malt/no-overrides], @racket[d+] should be used.
 }
 
-@defproc[(- [t0 tensor?] [t1 tensor?]) tensor?]{
+@defproc*[([(- [t0 tensor?] [t1 tensor?]) tensor?]
+           [(d- [t0 tensor?] [t1 tensor?]) tensor?])]{
 Subtracts @racket[t0] and @racket[t1] based on binary extended function rules.
 
 The same as @racket[(ext2 --0-0 0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-] should be used.
 }
 
-@defproc[(* [t0 tensor?] [t1 tensor?]) tensor?]{
+@defproc*[([(* [t0 tensor?] [t1 tensor?]) tensor?]
+           [(d* [t0 tensor?] [t1 tensor?]) tensor?])]{
 Multiplies @racket[t0] and @racket[t1] based on binary extended function rules.
 
 The same as @racket[(ext2 *-0-0 0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-*] should be used.
 }
 
-@defproc[(/ [t0 tensor?] [t1 tensor?]) tensor?]{
+@defproc*[([(/ [t0 tensor?] [t1 tensor?]) tensor?]
+           [(d/ [t0 tensor?] [t1 tensor?]) tensor?])]{
 Divides @racket[t0] into @racket[t1] based on binary extended function rules.
 
 The same as @racket[(ext2 /-0-0 0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-/] should be used.
 }
 
-@defproc[(expt [t0 tensor?] [t1 tensor?]) tensor?]{
+@defproc*[([(expt [t0 tensor?] [t1 tensor?]) tensor?]
+           [(d-expt [t0 tensor?] [t1 tensor?]) tensor?])]{
 Computes @racket[t0] raised to the power of @racket[t1] based on binary extended function rules.
 
 The same as @racket[(ext2 expt-0-0 0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-expt] should be used.
 }
 
-@defproc[(exp [t0 tensor?]) tensor?]{
+@defproc*[([(exp [t0 tensor?]) tensor?]
+           [(d-exp [t0 tensor?]) tensor?])]{
 Computes @italic{e} raised to the power of @racket[t0] based on unary extended function rules.
 
 The same as @racket[(ext1 exp-0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-exp] should be used.
 }
 
-@defproc[(log [t0 tensor?]) tensor?]{
+@defproc*[([(log [t0 tensor?]) tensor?]
+           [(d-log [t0 tensor?]) tensor?])]{
 Computes logarithm of @racket[t0] based on unary extended function rules.
 
 The same as @racket[(ext1 log-0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-log] should be used.
 }
 
-@defproc[(abs [t0 tensor?]) tensor?]{
+@defproc*[([(abs [t0 tensor?]) tensor?]
+           [(d-abs [t0 tensor?]) tensor?])]{
 Computes absolute value of @racket[t0] based on unary extended function rules.
 
 The same as @racket[(ext1 abs-0 0)].
+
+When using @racket[malt/no-overrides], @racket[d-abs] should be used.
 }
 
-@defproc[(sqrt [t0 tensor?]) tensor?]{
+@defproc*[([(sqrt [t0 tensor?]) tensor?]
+           [(d-sqrt [t0 tensor?]) tensor?])]{
 Computes the square root of @racket[t0] based on unary extended function rules.
 
 The same as @racket[(expt t0 1/2)].
+
+When using @racket[malt/no-overrides], @racket[d-sqrt] should be used.
 }
 
-@defproc[(sqr [t0 tensor?]) tensor?]{
+@defproc*[([(sqr [t0 tensor?]) tensor?]
+           [(d-sqr [t0 tensor?]) tensor?])]{
 Computes the square of @racket[t0] based on unary extended function rules.
 
 The same as @racket[(* t0 t0)].
+
+When using @racket[malt/no-overrides], @racket[d-sqr] should be used.
 }
 
-@defproc[(sum [t0 tensor?]) tensor?]{
+@defproc*[([(sum [t0 tensor?]) tensor?]
+           [(d-sum [t0 tensor?]) tensor?])]{
 If t0 is a tensor of rank 1, return the sum of all the @racket[scalar?] elements in @racket[t0].
 
 When @racket[t0] is of rank higher than 1, the rules of unary extended functions apply.
 
 The same as @racket[(ext1 sum-1 1)].
+
+When using @racket[malt/no-overrides], @racket[d-sum] should be used.
 }
 
-@defproc[(sum-cols [t0 tensor?]) tensor?]{
+@defproc*[([(sum-cols [t0 tensor?]) tensor?]
+           [(d-sum-cols [t0 tensor?]) tensor?])]{
 If t0 is a tensor of rank 2, return the sum of all the @racket[scalar?] elements in @racket[t0], calculated using
 the extended addition function @racket[+].
 
@@ -85,9 +120,12 @@ When @racket[t0] is of rank 1, this function is the same as @racket[sum].
 The function is undefined if @racket[t0] is a scalar.
 
 The same as @racket[(ext1 sum-1 2)].
+
+When using @racket[malt/no-overrides], @racket[d-sum-cols] should be used.
 }
 
-@defproc[(*-2-1 [t0 tensor?] [t1 tensor?]) tensor?]{
+@defproc*[([(*-2-1 [t0 tensor?] [t1 tensor?]) tensor?]
+           [(d*-2-1 [t0 tensor?] [t1 tensor?]) tensor?])]{
 When @racket[t0] is a tensor of shape @racket[(list m n)] and @racket[t1] is a tensor of shape @racket[(list n)],
 returns a tensor @italic{r} of shape @racket[(list m n)] where the @racket[m] elements of @italic{r} are formed
 by multiplying each element of @racket[t0] with @racket[t1] using the extended multiplication function @racket[*].
@@ -98,9 +136,12 @@ functions apply.
 The function is undefined if @racket[t0] has rank less than 2 and @racket[t1] has rank less than 1.
 
 The same as @racket[(ext2 * 2 1)].
+
+When using @racket[malt/no-overrides], @racket[d*-2-1] should be used.
 }
 
-@defproc[(argmax [t0 tensor?]) tensor?]{
+@defproc*[([(argmax [t0 tensor?]) tensor?]
+           [(d-argmax [t0 tensor?]) tensor?])]{
 When @racket[t0] is a tensor of rank 1, returns the index of the highest element in @racket[t0].
 
 When @racket[t0] is of rank higher than 1, the rules of unary extended functions apply.
@@ -108,9 +149,12 @@ When @racket[t0] is of rank higher than 1, the rules of unary extended functions
 The function is undefined when @racket[t0] is of rank less than 1.
 
 The same as @racket[(ext1 argmax-1 1)].
+
+When using @racket[malt/no-overrides], @racket[d-argmax] should be used.
 }
 
-@defproc[(max [t0 tensor?]) tensor?]{
+@defproc*[([(max [t0 tensor?]) tensor?]
+           [(d-max [t0 tensor?]) tensor?])]{
 When @racket[t0] is a tensor of rank 1, returns the highest element in @racket[t0].
 
 When @racket[t0] is of rank higher than 1, the rules of unary extended functions apply.
@@ -118,6 +162,8 @@ When @racket[t0] is of rank higher than 1, the rules of unary extended functions
 The function is undefined when @racket[t0] is of rank less than 1.
 
 The same as @racket[(ext1 max-1 1)].
+
+When using @racket[malt/no-overrides], @racket[d-max] should be used.
 }
 
 @defproc[(dot-product [t0 tensor?] [t1 tensor?]) tensor?]{
@@ -136,7 +182,7 @@ The same as @racket[(sum (* t0 t1))].
 @defproc[(dot-product-2-1 [t0 tensor?] [t1 tensor?]) tensor?]{
 When @racket[t0] is a tensor of shape @racket[(list m n)] and @racket[t1] is a tensor of shape @racket[(list n)],
 returns a tensor @italic{r} of shape @racket[(list m)] where the @racket[m] elements of @italic{r} are formed
-by from the @racket[dot-product] of each element of @racket[t0] with @racket[t1].
+by the @racket[dot-product] of each element of @racket[t0] with @racket[t1].
 
 When the ranks of @racket[t0] and @racket[t1] are higher than 2 and 1 respectively, the rules of binary extended
 functions apply.

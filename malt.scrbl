@@ -6,16 +6,18 @@
 
 Malt is a minimalist deep learning toolkit that is designed to support
 the book @italic{The Little Learner}, by Daniel P. Friedman and
-Anurag Mendhekar.  The toolkit provides the basics necessary to build
-simple deep-learning networks, but more importantly, provides a
-framework that can be extended for more complex networks.
+Anurag Mendhekar.
 
 The framework provides for tensors, automatic differentiation,
 gradient descent, commonly used loss functions, layer functions and
 neural network construction tools.
 
+While today is primarily designed as a pedagogical tool, we are seeking
+fellow enthusiasts who would be interested in making it production worthy.
+
 @table-of-contents[]
 
+@include-section["docs/overview.scrbl"]
 @include-section["docs/entry-points.scrbl"]
 @include-section["docs/list-functions.scrbl"]
 @include-section["docs/tensor-functions.scrbl"]
@@ -27,11 +29,12 @@ neural network construction tools.
 @include-section["docs/boolean-comparators.scrbl"]
 @include-section["docs/tensorized-comparators.scrbl"]
 @include-section["docs/hypers.scrbl"]
-@include-section["docs/loss.scrbl"]
-@include-section["docs/layer.scrbl"]
 @include-section["docs/gd.scrbl"]
+@include-section["docs/layer.scrbl"]
+@include-section["docs/loss.scrbl"]
 @include-section["docs/blocks.scrbl"]
 @include-section["docs/init.scrbl"]
 @include-section["docs/randoms.scrbl"]
 @include-section["docs/misc.scrbl"]
 @include-section["docs/logging.scrbl"]
+@include-section["docs/helpers.scrbl"]

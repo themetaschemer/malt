@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@defmodule[malt]
+@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
 
 @title{List functions}
 
@@ -13,7 +13,7 @@ in the presence of automatic differentiation.
 }
 
 @defproc[(refr [lst (listof any?)] [n scalar?]) (listof any?)]{
-  Returns the remaining of members in @racket[lst] after removing
+  Returns the remaining members in @racket[lst] after removing
   the first @racket[n] members. This is equivalent to @racket[drop].
 }
 
