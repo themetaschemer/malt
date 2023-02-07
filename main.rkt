@@ -2,6 +2,7 @@
 
 (require "base.rkt")
 (require "malted.rkt")
+(require "ports.rkt")
 
 (provide
 
@@ -107,4 +108,4 @@
 
  ;; Helpers
  trace-print check-dual-equal? check-ρ-∇
- )
+)

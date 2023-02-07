@@ -21,6 +21,7 @@
  scalar? tensor? rank shape reshape trefs
 
  trace-print check-dual-equal? check-ρ-∇
+ max-tensor-print-length make-printable
 
  (rename-out (d+ +) (d- -) (d* *) (d/ /) (d-rectify rectify)
              (d-exp exp) (d-log log) (d-expt expt) (d-sqrt sqrt) (d-sqr sqr)

@@ -116,5 +116,5 @@
 (include "test/test-A-autodiff.rkt")
 
 (provide
-  dual dual? ρ κ ∇ ∇¹ dual* scalar?
+  dual dual? ρ κ ∇ ∇¹ dual* scalar? end-of-chain
   trace-print)

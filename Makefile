@@ -32,6 +32,7 @@ LEARNER_AUTODIFF_SOURCES=\
   $(LEARNER_AUTODIFF_DIR)/A-autodiff.rkt\
   $(LEARNER_AUTODIFF_DIR)/B-prims.rkt\
   $(LEARNER_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(LEARNER_AUTODIFF_DIR)/E-print.rkt\
   $(LEARNER_DIR)/autodiff.rkt
 
 LEARNER_EXT_OPS_SOURCES=\
@@ -78,6 +79,7 @@ FLAT_AUTODIFF_SOURCES=\
   $(FLAT_AUTODIFF_DIR)/B-prims.rkt\
   $(FLAT_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
   $(FLAT_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(FLAT_AUTODIFF_DIR)/E-print.rkt\
   $(FLAT_DIR)/autodiff.rkt
 
 FLAT_EXT_OPS_SOURCES=\
@@ -120,6 +122,7 @@ NESTED_AUTODIFF_SOURCES=\
   $(NESTED_AUTODIFF_DIR)/B-prims.rkt\
   $(NESTED_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
   $(NESTED_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(NESTED_AUTODIFF_DIR)/E-print.rkt\
   $(NESTED_DIR)/autodiff.rkt
 
 NESTED_EXT_OPS_SOURCES=\
@@ -177,6 +180,7 @@ SOURCES=$(LEARNER_SOURCES)\
   $(NESTED_SOURCES)\
   $(TOOLS_SOURCES)\
   $(MALTED_SOURCES)\
+  ports.rkt\
   impl.rkt\
   impl-no-duals.rkt\
   impl-no-overrides.rkt\
@@ -184,7 +188,8 @@ SOURCES=$(LEARNER_SOURCES)\
   base.rkt\
   base-no-duals.rkt\
   base-no-overrides.rkt\
-  base-no-duals-no-overrides.rkt
+  base-no-duals-no-overrides.rkt\
+  main.rkt
 
 # Files applicable to print.
 TO_PRINT=$(SOURCES)
@@ -236,7 +241,7 @@ one:
 	-@ $(RACO) make $(ARG) && $(RACO) test $(ARG)
 
 clean:
-	find . -name 'compiled' -exec rm -rf {} \;
+	find . -name 'compiled' | xargs -I% rm -rf %
 
 doc: $(DOC_FILES)
 	mkdir -p html

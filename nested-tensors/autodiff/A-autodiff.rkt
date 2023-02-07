@@ -117,4 +117,4 @@
 
 (provide
   dual dual? ρ κ ∇ ∇¹ ∇-once map* dual* scalar?
-  trace-print)
+  end-of-chain trace-print)

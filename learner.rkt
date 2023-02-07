@@ -50,4 +50,6 @@
  sum-1 argmax-1 max-1
 
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
- =-1 <-1 >-1 <=-1 >=-1 !=-1)
+ =-1 <-1 >-1 <=-1 >=-1 !=-1
+
+ max-tensor-print-length make-printable)

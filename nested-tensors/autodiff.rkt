@@ -4,6 +4,7 @@
 (require "autodiff/B-prims.rkt")
 (require "autodiff/C-dualized-tensor-ops.rkt")
 (require "autodiff/D-test-helpers.rkt")
+(require "autodiff/E-print.rkt")
 
 (provide dual dual? ρ κ ∇ ∇¹ scalar? trace-print dual*)
 (provide prim1 prim2 ext1 ext2)
@@ -17,3 +18,5 @@
                      (d-refr refr)))
 
 (provide check-dual-equal? check-ρ-∇)
+
+(provide max-tensor-print-length make-printable)
