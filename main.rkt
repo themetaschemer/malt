@@ -108,4 +108,5 @@
 
  ;; Helpers
  trace-print check-dual-equal? check-ρ-∇
+ max-tensor-print-length raw-tensor-printing?
 )

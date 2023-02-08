@@ -44,7 +44,7 @@ The following functions are available when the default tensor implementation in 
 }
 
 
-@section{Primives in @racket[flat-tensors]}
+@section{Primitives in @racket[flat-tensors]}
 
 @defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/flat-tensors)]
 The following functions are available when the default tensor implementation in @racket[malt] is @racket[flat-tensors].

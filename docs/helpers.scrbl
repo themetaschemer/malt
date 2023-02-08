@@ -39,3 +39,17 @@ or any of its other entry points.
   (check-dual-equal (∇¹ f arg ...) grads)
   } would pass.
 }
+
+
+@defparam[max-tensor-print-length max-length natural? #:value 5]{
+ When tensors are printed out using @racket[write], @racket[display], @racket[print], or in the REPL,
+ @racket[max-tensor-print-length] determines how many elements are printed after which @racket[...]
+ is displayed. If set to 0, the whole tensor is printed.
+}
+
+@defparam[raw-tensor-printing? print-raw? boolean? #:value #f]{
+ By default, Malt sets the @racket[current-print] to @racket[pretty-print-handler] and customizes the REPL, and
+ ports @racket[current-output-port] and @racket[current-error-port] to detect and print tensors and duals in
+ a friendlier way. Setting this parameter to @racket[#t] turns off this printing behavior and
+ tensors and duals are printed with their raw representation.
+}

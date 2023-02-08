@@ -12,8 +12,9 @@ The framework provides for tensors, automatic differentiation,
 gradient descent, commonly used loss functions, layer functions and
 neural network construction tools.
 
-While today is primarily designed as a pedagogical tool, we are seeking
-fellow enthusiasts who would be interested in making it production worthy.
+While it has started off as a pedagogical tool, it is designed with
+the future in mind and we are seeking fellow enthusiasts who would be
+interested in making it production worthy.
 
 @table-of-contents[]
 
