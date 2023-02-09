@@ -1,6 +1,7 @@
 #lang scribble/manual
 @(require (for-label (for-label (except-in racket + - / * expt exp abs log max sqrt argmax sqr < > = >= <=)
                               "main.rkt")))
+
 @title{Malt - A minimalist deep learning toolkit}
 @author{Anurag Mendhekar and Daniel P. Friedman}
 

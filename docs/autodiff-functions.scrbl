@@ -1,18 +1,18 @@
 #lang scribble/manual
 @title{Automatic Differentiation}
 
-@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
+@declare-exporting[malt]
 
 Automatic differentiation functions are described in terms of these types, that are described
-in #secref{overview}.
+in @secref{overview}.
 @itemlist[
 @item{@racket[dual?] - Duals}
 @item{@racket[link?] - Links included in a dual. Defined as the type
-@codeblock{(-> (dual? tensor? gradient-state?) gradient-state?)}}
+@codeblock{(-> dual? tensor? gradient-state? gradient-state?)}}
 @item{@racket[gradient-state?] - A hashtable from @racket[dual?] to @racket[tensor?]}
 @item{@racket[differentiable?] - Either a @racket[dual?], or a @racket[(listof differentiable?)]. In the @racket[learner]
-implementation @racket[(vectorof differentiable?)] is also considered to be @racket[differentiable?], but not in other
-implementations.}
+representation @racket[(vectorof differentiable?)] is also considered to be @racket[differentiable?], but not in other
+representations.}
 ]
 
 
@@ -42,22 +42,22 @@ new @racket[gradient-state?] that includes the mapping of @racket[d] to the addi
 and the mapping of @racket[d] in @racket[σ], if it exists, or 0.0 otherwise. If @racket[z] is not a @racket[number?],
 @racket[+-ρ] is used for the addition.
 
-In the @racket[learner] implementation, @racket[z] can only be a @racket[scalar?].
+In the @racket[learner] representation, @racket[z] can only be a @racket[scalar?].
 }
 
-@defproc[(∇¹ [f (-> (differentiable? ...) differentiable?)] [t0 differentiable?] ... [tn differentiable?]) (listof tensor?)]{
+@defproc[(∇¹ [f (-> differentiable? ... differentiable?)] [t0 differentiable?] ... [tn differentiable?]) (listof tensor?)]{
 Returns a list of gradients @racket[(list g0 ... gn)] where @racket[gi] is the gradient of @racket[(f t0 ... tn)] with
 respect to @racket[ti]. If @racket[(f t0 ... tn)] is not a @racket[scalar?], then @racket[gi] is the sum of the gradients
 of each scalar in @racket[(f t0 ... tn)] with respect to @racket[ti].
 }
 
-@defproc[(∇ [f (-> ((listof tensor?)) tensor?)] [θ (listof tensor?)]) (listof tensor?)]{
+@defproc[(∇ [f (-> (listof tensor?) tensor?)] [θ (listof tensor?)]) (listof tensor?)]{
 This is equivalent to @codeblock{
 (ref (∇¹ f θ) 0)
 }
 }
 
-@defproc[(gradient-of [f (-> ((listof tensor?)) tensor?)] [θ (listof tensor?)]) (listof tensor?)]{
+@defproc[(gradient-of [f (-> (listof tensor?) tensor?)] [θ (listof tensor?)]) (listof tensor?)]{
 This is also equivalent to @codeblock{
 (ref (∇¹ f θ) 0)
 }

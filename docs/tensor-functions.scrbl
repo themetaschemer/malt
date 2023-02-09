@@ -1,7 +1,7 @@
 #lang scribble/manual
 @title{Tensor functions}
 
-@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
+@declare-exporting[malt]
 
 @defproc[(scalar? [s any]) boolean?]{
   Returns @racket[#t] if its argument is a scalar.
@@ -106,6 +106,6 @@
 
 @defproc[(trefs [t tensor?][b (list (and/c natural? (</c (tlen t))))]) tensor?]{
   Here @racket[b] is a list of indices into @racket[t]. Returns a tensor
-  consisting of the elements @racket{(tref t i)} for each @racket[i] in @racket[b]
+  consisting of the elements @racket[(tref t i)] for each @racket[i] in @racket[b]
   in the order of appearance in @racket[b].
 }

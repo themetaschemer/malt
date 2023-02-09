@@ -1,7 +1,7 @@
 #lang scribble/manual
 @title{Boolean comparison functions}
 
-@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
+@declare-exporting[malt]
 
 These functions are used for comparison between @racket[scalar?]s.
 

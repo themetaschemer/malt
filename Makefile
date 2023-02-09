@@ -245,10 +245,10 @@ clean:
 
 doc: $(DOC_FILES)
 	mkdir -p html
-	raco scribble +m --htmls --dest html $(DOC_ROOT)
+	raco scribble --quiet +m --htmls --dest html $(DOC_ROOT)
 
 doc-pdf: $(DOC_FILES)
-	raco scribble +m --pdf $(DOC_ROOT)
+	raco scribble --quiet +m --pdf $(DOC_ROOT)
 
 print:
 	lpr $(TO_PRINT)

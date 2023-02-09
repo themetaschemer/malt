@@ -1,13 +1,13 @@
 #lang scribble/manual
 @title{Random number functions}
 
-@defmodule[malt]
+@declare-exporting[malt]
 
 @defproc[(random-normal [mu scalar?] [sigma scalar?]) scalar?]{
  Returns a random number sampled from the normal distribution with a mean of @racket[mu] and a standard deviation of @racket[sigma].
 }
 
-@defproc[(random-standar-normal) scalar?]{
+@defproc[(random-standard-normal) scalar?]{
  Returns a random number sampled from the normal distribution with a mean of @racket[0.0] and a standard deviation of @racket[1.0].
 }
 

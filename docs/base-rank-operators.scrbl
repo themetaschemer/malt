@@ -1,7 +1,7 @@
 #lang scribble/manual
 @title[#:tag "base-rank-differentiable-functions"]{Base-rank (non-extended) differentiable functions}
 
-@defmodule*[(malt malt/base malt/base-no-duals malt/base-no-overrides malt/base-no-duals-no-overrides malt/learner malt/flat-tensors malt/nested-tensors)]
+@declare-exporting[malt]
 
 The following functions are non-extended functions defined on tensors of the specified base-rank. No extended function rules
 apply to these functions. They can be arguments to @racket[ext1] (if unary) or @racket[ext2] (if binary). These functions

@@ -1,16 +1,16 @@
 #lang scribble/manual
 @title{Building blocks for neural networks}
 
-@defmodule[malt]
+@declare-exporting[malt]
 
 The type @racket[block?] consists of two fields, a @italic{block function}
 and a @italic{block list}.
 
-@defproc[(block [b-fn (-> (tensor?) (-> ((listof tensor?)) tensor?))] [block-ls (listof shape?)]) block?]{
+@defproc[(block [b-fn (-> tensor? (-> (listof tensor?) tensor?))] [block-ls (listof shape?)]) block?]{
   Creates a block from the block function @racket[b-fn] and the block list @racket[block-ls].
 }
 
-@defproc[(block-fn [b block?]) (-> (tensor?) (-> ((listof tensor?)) tensor?))]{
+@defproc[(block-fn [b block?]) (-> tensor? (-> (listof tensor?) tensor?))]{
   Returns the block function from the block @racket[b].
 }
 

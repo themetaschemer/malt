@@ -1,9 +1,9 @@
 #lang scribble/manual
 @title{He Initialization}
 
-@defmodule[malt]
+@declare-exporting[malt]
 
-These functions are used in the setting the initial values in a given @racket[theta] based
+These functions are used in setting the initial values in a given @racket[theta] based
 on the shapes of the tensors desired in the @racket[theta].
 
 @defproc[(init-theta [θ-shapes (listof shape?)]) (listof tensor?)]{

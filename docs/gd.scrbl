@@ -2,33 +2,33 @@
 @title[#:tag "gd-functions"]{Gradient Descent Functions and Hyperparameters}
 
 
-@defmodule[malt]
+@declare-exporting[malt]
 
 The following types are used in this section.
 @itemlist[
 @item{@racket[accompanied?] :  @racket[(listof tensor?)]}
-@item{@racket[objective-fn?] :  @racket[(-> (theta?) tensor?)], as defined in @secref{loss-fns}.}
+@item{@racket[objective-fn?] :  @racket[(-> theta? tensor?)], as defined in @secref{loss-fns}.}
 @item{@racket[id?] :  The identity function}
-@item{@racket[inflator?] : @racket[(-> (tensor?) accompanied?)]}
-@item{@racket[deflator?] : @racket[(-> (accompanied?) tensor?)]}
-@item{@racket[updator?] : @racket[(-> (accompanied? tensor?) accompanied?)]}
-@item{@racket[id-updator?] : @racket[(-> (tensor? tensor?) tensor?)]}
+@item{@racket[inflator?] : @racket[(-> tensor? accompanied?)]}
+@item{@racket[deflator?] : @racket[(-> accompanied? tensor?)]}
+@item{@racket[updator?] : @racket[(-> accompanied? tensor? accompanied?)]}
+@item{@racket[id-updator?] : @racket[(-> tensor? tensor? tensor?)]}
 ]
 
 Hyperparameters can be given values using @racket[with-hypers] as in @secref{hypers}.
 
-@defproc[(revise [f (-> (theta?) theta?)] [revs natural?] [theta theta?]) theta?]{
- Returns the result of @racket[(f (f (f ... revs times ... theta)))].
+@defproc[(revise [f (-> theta? theta?)] [revs natural?] [theta theta?]) theta?]{
+ Returns the result of @racket[(f (f (f ... (f theta))))], where @racket[f] is
+ applied @racket[revs] times.
 }
-
 
 @defproc*[([(gradient-descent [inflate id?]
                               [deflate id?]
-                              [update  id-updator?]) (-> (objective-fn? theta?) theta?)]
+                              [update  id-updator?]) (-> objective-fn? theta? theta?)]
            [(gradient-descent [inflate inflator?]
                               [deflate deflator?]
-                              [update  updator?]) (-> (objective-fn? theta?) theta?)])]{
-  Generates gradient descent function by accepting three control functions.
+                              [update  updator?]) (-> objective-fn? theta? theta?)])]{
+  Generates a gradient descent function by accepting three control functions.
   @itemlist[
     @item{@racket[inflate] injects a parameter tensor into an accompanied parameter.}
     @item{@racket[deflate] projects a parameter tensor out of an accompanied parameter.}
@@ -47,7 +47,7 @@ Hyperparameters can be given values using @racket[with-hypers] as in @secref{hyp
  Hyperparameter that defines the learning rate for the different types of gradient descent functions.
 }
 
-@defproc[(naked-gradient-descent [obj? (-> ((listof tensor?)) scalar?)]
+@defproc[(naked-gradient-descent [obj? (-> (listof tensor?) scalar?)]
                                  [θ (listof tensor?)]) (listof tensor?)]{
   Gradient descent function where @racket[inflate] and @racket[deflate] are
   the identity function and @racket[update] is @codeblock{
@@ -56,9 +56,9 @@ Hyperparameters can be given values using @racket[with-hypers] as in @secref{hyp
   } where @racket[alpha] is the learning rate hyper parameter.
 }
 
-@defproc[(velocity-gradient-descent [obj? (-> ((listof tensor?)) scalar?)]
+@defproc[(velocity-gradient-descent [obj? (-> (listof tensor?) scalar?)]
                                     [θ (listof tensor?)]) (listof tensor?)]{
-  Gradient descent function generate with the following functions
+  Gradient descent function generated with the following functions
   as the @racket[inflate], @racket[deflate] and @racket[update] @codeblock{
 (define velocity-i
   (λ (p)
@@ -83,9 +83,9 @@ is transferred to the current revision.
  @racket[adam-gradient-descent].
 }
 
-@defproc[(rms-gradient-descent [obj? (-> ((listof tensor?)) scalar?)]
+@defproc[(rms-gradient-descent [obj? (-> (listof tensor?) scalar?)]
                                [θ (listof tensor?)]) (listof tensor?)]{
-  Gradient descent function generate with the following functions
+  Gradient descent function generated with the following functions
   as the @racket[inflate], @racket[deflate] and @racket[update] @codeblock{
 (define rms-i
   (λ (p)
@@ -110,9 +110,9 @@ Here @racket[beta] is the hyperparameter defining the decay rate for smoothing t
  @racket[adam-gradient-descent].
 }
 
-@defproc[(adam-gradient-descent [obj? (-> ((listof tensor?)) scalar?)]
+@defproc[(adam-gradient-descent [obj? (-> (listof tensor?) scalar?)]
                                 [θ (listof tensor?)]) (listof tensor?)]{
-  Gradient descent function generate with the following functions
+  Gradient descent function generated with the following functions
   as the @racket[inflate], @racket[deflate] and @racket[update] @codeblock{
 (define adam-i
   (λ (p)

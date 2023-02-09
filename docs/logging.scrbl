@@ -1,7 +1,7 @@
 #lang scribble/manual
 @title{Logging}
 
-@defmodule[malt]
+@declare-exporting[malt]
 
 Functions for logging information and reporting moving averages of some types of quantities.
 
@@ -35,5 +35,5 @@ Functions for logging information and reporting moving averages of some types of
            (log-malt-info format-string-expr v ...))]
 @defform*[((log-malt-debug string-expr)
            (log-malt-debug format-string-expr v ...))])]{
-  Log a message at the associated level. Follows conventions of the default Racket logger.
+  Log a message at the associated level. Follows conventions of the default @hyperlink["https://docs.racket-lang.org/reference/logging.html"]{Racket logger}.
 }

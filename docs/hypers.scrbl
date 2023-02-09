@@ -1,7 +1,7 @@
 #lang scribble/manual
 @title[#:tag "hypers"]{Hyperparameters}
 
-@defmodule[malt]
+@declare-exporting[malt]
 @deftogether[(
 @defform[(declare-hyper h)]{}
 @defform[(declare-hypers h ...)])]{

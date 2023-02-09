@@ -1,12 +1,16 @@
 #lang scribble/manual
 @title{Layer functions}
 
-@defmodule[malt]
+@declare-exporting[malt]
+
+These are functions are provided by Malt that can be used either as individual target functions (see @secref{loss-fns}) or may be combined
+with each other to produce new target functions. They are collectively called layer functions since some of these functions
+are used to construct deep neural networks using layers.
 
 @section{Single layer functions}
 
 These functions accept an input tensor, a @racket[θ] and return an output tensor. These functions are
-all of the type [target-fn?] (see @secref{loss-fns}).
+all of the type @racket[target-fn?] (see @secref{loss-fns}).
 
 @defproc[((line [t tensor?]) [θ theta?]) tensor?]{
   Implements the linear combination @codeblock{
@@ -35,12 +39,6 @@ all of the type [target-fn?] (see @secref{loss-fns}).
   (let ((z (- t (max t))))
     (let ((expz (exp z)))
       (/ expz (sum expz))))
-  }
-}
-
-@defproc[((relu [t tensor?]) [θ theta?]) tensor?]{
-  Implements the ReLU function @codeblock{
-  (rectify ((linear t) theta))
   }
 }
 
