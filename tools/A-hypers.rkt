@@ -7,11 +7,12 @@
                    (unset-value (datum->syntax x
                                   (string->symbol
                                     (format "unset-hyper-~a" (syntax->datum #'name))))))
-       #'(begin
+       #`(begin
            (define name 'unset-value)
            (define (setter v)
              (set! name v))
-           (provide name setter))))))
+           #,(when (member (syntax-local-context) '(module module-begin))
+               #'(provide name setter)))))))
 
 (define-syntax (with-hypers x)
   (syntax-case x ()
