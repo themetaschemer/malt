@@ -1,65 +1,48 @@
-Descriptions of package entry points
+# Introduction
+Malt is a minimalist deep learning toolkit that is designed to support
+the book @italic{The Little Learner}, by Daniel P. Friedman and
+Anurag Mendhekar.
 
-1. main.rkt
-   -- The whole malt package, ready to be used to build examples
+The framework provides for tensors, automatic differentiation,
+gradient descent, commonly used loss functions, layer functions and
+neural network construction tools.
 
-2. base.rkt
-   -- Tensors, autodiff and tools.
-       -- no machine learning functions. Useful for those who
-          are trying to follow along in the book starting with
-          gradient descent.
+While it has started off as a pedagogical tool, it is designed with
+the future in mind and we are seeking fellow enthusiasts who would be
+interested in making it production worthy.
 
-3. base-no-duals.rkt
-   -- Tensors and tools only, no autodiff
-       -- For people trying to build autodiff from the appendices
-       -- Also good for using non-differentiable extended functions
+# Preequisites.
 
---------------------------------
-Tensor representations. The code in this package supports two types
-of tensor representations:
+Malt is built on Racket. It can be downloaded [here](https://download.racket-lang.org/).
 
-1. Nested Tensors
+# Installation
+There are two ways to install and use `malt`.
+## Install using raco
+Malt is distributed as a package that is available directly from [Racket Packages](https://pkgs.racket-lang.org/).
+It can be installed like this
+```
+raco pkg install malt
+```
+## Install using the Git repository
+Another way of installing malt is to clone the git repository and install it as a local package.
+```
+git clone https://github.com/themetaschemer/malt.git
+cd malt
+make
+make install
+```
+# Switching Tensor Implementations
+Malt is designed with multiple tensor implementations (intended for different purposes---some pedagogical, some for efficiency). These
+implementations can be switched when Malt has been installed as a Git repository. In order switch implementations, create a
+file called `local.cfg` in your local clone of the repository with the following line, and replace `<impl-name>` with one of `learner`, `nested-tensors` or `flat-tensors`. The default implementation is `flat-tensors`.
+```
+(tensor-implementation <impl-name>)
+```
+Then, rebuild the package
+```
+make clean && make
+```
 
-and
-
-2. Flat Tensors.
-
-The default is Flat Tensors for 1, 2 and 3 above.
---------------------------------
-In the "Developer Version", the Makefile can be used to switch between different representations.
-
---------------------------------
-These are for internal usage within malted.
-
-6. impl.rkt
-   -- Loads the specified implementation of tensors
-
-7. impl-no-duals.rkt
-   -- Loads the specified implementation of tensors
-
---------------------------------
-Collections and their loaders.
-
-Flat tensors
-    -- Tensors, extended functions, auto-diff using the flat representation
-    -- loaded using flat-tensors.rkt
-
-Nested tensors
-    -- Tensors, extended functions, auto-diff using the flat representation
-    -- loaded using flat-tensors.rkt
-
-Tools
-    -- Tools that are abstracted out:
-        Hyperparameters, Normally distributed Random numbers, Logging
-    -- Loaded using tools.rkt, depends upon impl.rkt
-
-Malted
-    -- Layer functions, Loss, GD, Dense/Recu Layers, Blocks, Initialization
-    -- loaded using malted.rkt, depends upon impl.rkt and impl-no-duals.rkt
-
---------------------------------
-Future tensor implementations to be supported
-
-f32flat tensors
-
-f32flat with GPU support tensors
+# Reference
+The documentation for the code is available [here](https://docs.racket-lang.org/malt/index.html). Additional information is
+also available at [www.thelittlelearner.com](https://www.thelittlelearner.com).
