@@ -2,7 +2,10 @@
 
 (require "base.rkt")
 
+(define printable-maker (make-parameter make-printable))
+
 (define raw-tensor-printing? (make-parameter #f))
+
 (define correct-ports
   (λ ()
     (let ((op (current-output-port))
@@ -22,15 +25,15 @@
     (λ (x port . opt)
       (cond
         ((raw-tensor-printing?) (apply cp x port opt))
-        ((null? opt) (cp (make-printable x) port))
-        (else (cp (make-printable x) port (car opt)))))))
+        ((null? opt) (cp ((printable-maker) x) port))
+        (else (cp ((printable-maker) x) port (car opt)))))))
 
 (define new-pretty-print-size-hook
   (let ((ppsh (pretty-print-size-hook)))
     (λ (v display? port)
       (cond
         ((raw-tensor-printing?) (ppsh v display? port))
-        ((vector? v) (string-length (~a (make-printable v))))
+        ((vector? v) (string-length (~a ((printable-maker) v))))
         (else (ppsh v display? port))))))
 
 (define new-pretty-print-print-hook
@@ -38,8 +41,8 @@
     (λ (v display? port)
       (cond
         ((raw-tensor-printing?) (ppph v display? port))
-        ((and display? (vector? v)) (display (make-printable v) port))
-        ((and (not display?) (vector? v)) (write (make-printable v) port))
+        ((and display? (vector? v)) (display ((printable-maker) v) port))
+        ((and (not display?) (vector? v)) (write ((printable-maker) v) port))
         (else (ppph v display? port))))))
 
 (define pretty-print-handler
@@ -47,12 +50,14 @@
     (cond
       ((void? v) (void))
       ((raw-tensor-printing?) (pretty-print v))
-      (else (pretty-print (make-printable v))))))
+      (else (pretty-print ((printable-maker) v))))))
 
 (pretty-print-print-hook new-pretty-print-print-hook)
+
 (pretty-print-size-hook new-pretty-print-size-hook)
+
 (current-print pretty-print-handler)
 
 (correct-ports)
 
-(provide raw-tensor-printing?)
+(provide raw-tensor-printing? printable-maker)
