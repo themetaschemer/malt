@@ -1,6 +1,6 @@
 #lang racket
 
-(require (only-in "../impl.rkt" ρ sum-ρ scalar? shape rank tensor +-ρ))
+(require (only-in "../impl.rkt" ρ sum-ρ scalar? shape rank tensor +-ρ map*))
 
 ;; This is a logging system for tracking loss during training in Malt. It is Racket specific.
 ;; Logging in Racket is a pub/sub model. Publishers write their log events to a topic
@@ -61,11 +61,11 @@
 (define sum-all
   (λ (d0 d1 d2 d3 d4 data)
     (sum-deep
-      (+-ρ d0
-        (+-ρ d1
-          (+-ρ d2
-            (+-ρ d3
-              (+-ρ d4 data))))))))
+      (+-ρ (map* ρ d0)
+        (+-ρ (map* ρ d1)
+          (+-ρ (map* ρ d2)
+            (+-ρ (map* ρ d3)
+              (+-ρ (map* ρ d4) (map* ρ data)))))))))
 
 (define sum-deep
   (λ (t)
