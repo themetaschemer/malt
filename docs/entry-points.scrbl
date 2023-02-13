@@ -40,7 +40,7 @@ This entry point is used by other sub-modules within Malt where only tensors and
 differentiation are required.
 
 @defmodule[malt/base-no-duals #:no-declare]
-This entry point provides every thing in @racket[malt/base] but leaves out
+This entry point provides everything in @racket[malt/base] but leaves out
 automatic differentiation and deep learning specific function exports.
 
 This entry point is used by some sub-modules within Malt where tensors and extended operations
@@ -50,7 +50,7 @@ are required, but duals and automatic differentiation are not.
 @defmodule[malt/base-no-overrides #:no-declare]
 
 The entry points @code{malt}, @code{malt/base}, and  @code{malt/base-no-duals} by default override common
-mathematical functions (@racket[+], @racket[*] etc. See @secref{diffable-fns} and @secref{non-diffable-fns}).
+mathematical functions (@racket[+], @racket[*], etc. See @secref{diffable-fns} and @secref{non-diffable-fns}).
 
 This entry point does not override any default mathematical operations. The differentiable operations are
 provided with a @code{d} or a @code{d-} prefix. Section @secref{diffable-fns} lists the names that are used

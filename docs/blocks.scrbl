@@ -20,6 +20,6 @@ and a @italic{block list}.
 
 @defproc[(stack-blocks [blocks (listof block?)]) block?]{
   Returns a new block where the block function is a composition of the block functions
-  of each block in @racket[blocks] in the order they appear @racket[blocks], and the block list is
+  of each block in @racket[blocks] in the order they appear in @racket[blocks], and the block list is
   created by appending the block lists of each block in @racket[blocks] in the order they appear in @racket[blocks].
 }

@@ -26,8 +26,8 @@ or any of its other entry points.
       the check passes if @racket[(check-dual-equal? ea eb)] passes where @racket[ea] and @racket[eb]
       are corresponding elements of @racket[a] and @racket[b] respectively.
       }
-@item{If @racket[a] and @racket[b] are @racket[equal?], the check passes}
-@item{Otherwise the check fails}
+@item{If @racket[a] and @racket[b] are @racket[equal?], the check passes.}
+@item{Otherwise the check fails.}
 ]
 }
 

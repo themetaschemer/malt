@@ -24,7 +24,7 @@ can be extended to a tensor @racket[t] of rank higher than @racket[m] using the 
 @itemlist[
 @item{If @racket[t] is of rank @racket[m], the result is the tensor @racket[(f t)].}
 @item{Else for each element of @racket[t], say @racket[te], invoke the @italic{extended} function on @racket[te] and assemble the results
-into a tensor, in the order of the elements of @racket[t]}
+into a tensor, in the order of the elements of @racket[t].}
 ]
 
 Unary functions are extended using @racket[ext1], @racket[ext1-ρ], or @racket[ext1-∇].
@@ -36,18 +36,18 @@ higher than @racket[m] and @racket[n] by recursively descending into @racket[t] 
 @itemlist[
 @item{If @racket[t] is of rank @racket[m] and @racket[u] is of rank @racket[n], the result is the tensor @racket[(f t u)].}
 @item{Else if @racket[t] is of rank @racket[m], for each element of @racket[u], say @racket[ue], invoke the @italic{extended} function
-on @racket[t] and @racket[ue], and assemble the results into a tensor, in the order of the elements of @racket[u]}
+on @racket[t] and @racket[ue], and assemble the results into a tensor, in the order of the elements of @racket[u].}
 @item{Else if @racket[u] is of rank @racket[n], for each element of @racket[t], say @racket[te], invoke the @italic{extended} function
-on @racket[te] and @racket[u], and assemble the results into a tensor, in the order of the elements of @racket[t]}
+on @racket[te] and @racket[u], and assemble the results into a tensor, in the order of the elements of @racket[t].}
 @item{Else if @racket[u] and @racket[t] are of equal length,
            for each element of @racket[t], say @racket[te], and @racket[u], say @racket[ue], invoke the @italic{extended} function
-on @racket[te] and @racket[ue], and assemble the results into a tensor, in the order of the elements of @racket[t] and @racket[u]}
+on @racket[te] and @racket[ue], and assemble the results into a tensor, in the order of the elements of @racket[t] and @racket[u].}
 @item{Else if the rank of @racket[u] is higher than the rank of @racket[t],
            for each element of @racket[u], say @racket[ue], invoke the @italic{extended} function
-           on @racket[t] and @racket[ue], and assemble the results into a tensor, in the order of the elements of @racket[u]}
+           on @racket[t] and @racket[ue], and assemble the results into a tensor, in the order of the elements of @racket[u].}
 @item{Else if the rank of @racket[t] is higher than the rank of @racket[u],
            for each element of @racket[t], say @racket[te], invoke the @italic{extended} function
-           on @racket[te] and @racket[u], and assemble the results into a tensor, in the order of the elements of @racket[t]}
+           on @racket[te] and @racket[u], and assemble the results into a tensor, in the order of the elements of @racket[t].}
 ]
 
 Binary functions are extended using @racket[ext2], @racket[ext2-ρ], or @racket[ext2-∇].
