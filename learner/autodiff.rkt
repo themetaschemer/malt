@@ -5,7 +5,7 @@
 (require "autodiff/D-test-helpers.rkt")
 (require "autodiff/E-print.rkt")
 
-(provide dual dual? ρ κ ∇ ∇¹ scalar? trace-print dual*)
+(provide dual dual? ρ κ ∇ ∇¹ scalar? trace-print dual* map*)
 
 (provide prim1 prim2)
 
