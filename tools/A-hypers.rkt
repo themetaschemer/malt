@@ -1,5 +1,8 @@
 #lang racket
 
+(require racket/provide-syntax)
+(require racket/provide-transform)
+
 (define-syntax (declare-hyper x)
   (syntax-case x ()
     ((_ name)
@@ -13,6 +16,17 @@
              (set! name v))
            #,(when (member (syntax-local-context) '(module module-begin))
                #'(provide name setter)))))))
+
+(define-provide-syntax (hypers x)
+  (syntax-case x ()
+    ((_ name ...)
+     (with-syntax (((setter ...)
+                    (datum->syntax #'(name ...)
+                      (map (λ (name)
+                             (let ((nm (datum->syntax x name)))
+                               (get-setter-name  nm nm)))
+                         (syntax->datum #'(name ...))))))
+     #`(combine-out name ... setter ...)))))
 
 (define-syntax (with-hypers x)
   (syntax-case x ()
@@ -111,5 +125,7 @@
 
 (include "test/test-A-hypers.rkt")
 
+(provide hypers)
 (provide with-hyper with-hypers
-         declare-hyper declare-hypers grid-search)
+         declare-hyper declare-hypers
+         grid-search)
