@@ -21,6 +21,7 @@
  scalar? tensor? rank shape reshape trefs
 
  trace-print check-dual-equal? check-ρ-∇
+ make-printable
 
  d+ d- d* d/ d-rectify
  d-exp d-log d-expt d-sqrt d-sqr

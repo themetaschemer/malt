@@ -8,6 +8,7 @@
  len ref refr
 
  tref tlen tmap list->tensor tensor build-tensor
+ make-printable
 
  (rename-out (ext1 ext1-ρ) (ext2 ext2-ρ))
 
