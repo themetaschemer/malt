@@ -17,6 +17,13 @@
                  (list name (ρ qty)))
     qty))
 
+(define log-malt-reset
+  (λ ()
+    (log-message malt-logger 'info
+                 (logger-name malt-logger)
+                 "resetting"
+                 '(reset))))
+
 (define start-logging
   (λ ([sampling-frequency 20])
     (let ((log-receiver (make-log-receiver malt-logger 'debug 'malt)))
@@ -40,6 +47,8 @@
                [sampling-count sampling-frequency])
       (let ((data (malt-log-handler (sync log-receiver))))
         (cond
+          ((eq? data 'reset)
+           (loop 0.0 0.0 0.0 0.0 0.0 0 sampling-frequency))
           ((and data (= sampling-count 1))
            (print-average (/ (sum-all d0 d1 d2 d3 d4 data) (* 6 (ρ (product (shape data))))) count)
            (loop d1 d2 d3 d4 data (add1 count) sampling-frequency))
@@ -83,6 +92,7 @@
           [topic (vector-ref log-event 3)])
       (match data
         (`(loss ,data) data)
+        (`(reset) 'reset)
         (x
          (fprintf (current-error-port)
                   "[~a] ~a: ~a~%~s~%" topic level message x)
@@ -90,7 +100,7 @@
 
 (include "test/test-C-logging.rkt")
 
-(provide record start-logging
+(provide record start-logging log-malt-reset
          log-malt-fatal
          log-malt-error
          log-malt-warning

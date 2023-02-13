@@ -59,6 +59,7 @@
  record
  with-recording
  start-logging
+ log-malt-reset
  log-malt-fatal
  log-malt-error
  log-malt-warning
@@ -73,22 +74,20 @@
  revise
  gradient-descent
  samples sampling-obj
- revs alpha batch-size
-
 
  naked-gradient-descent
-
- mu
  velocity-gradient-descent
-
- beta smooth epsilon
+ smooth epsilon
  rms-gradient-descent
  adam-gradient-descent
+
+ ;; Hypers
+ (hypers revs alpha batch-size mu beta)
 
  ;; Layer functions
  line quad linear-1-1 linear plane softmax
  relu k-relu  recu corr k-recu
- avg-cols signal-avg
+ signal-avg
 
  ;; Loss functions
  l2-loss cross-entropy-loss kl-loss

@@ -40,12 +40,6 @@
         (let ((expz (exp z)))
           (/ expz (sum expz)))))))
 
-(define avg-cols
-  (λ (t)
-    (λ (theta)
-      (let ((num-cols (ref (refr (shape t) (- (rank t) 2)) 0)))
-        (/ (sum-cols t) num-cols)))))
-
 (define signal-avg
   (λ (t)
     (λ (theta)
@@ -54,4 +48,4 @@
 
 (include "test/test-B-targets.rkt")
 
-(provide line quad linear-1-1 linear plane softmax avg-cols signal-avg)
+(provide line quad linear-1-1 linear plane softmax signal-avg)

@@ -16,19 +16,20 @@
 (require "malted/N-blocks.rkt")
 (require "malted/O-init.rkt")
 
+(require "tools.rkt")
+
 (provide dot-product-2-1 dot-product
          line quad linear-1-1 linear plane softmax
-         avg-cols signal-avg
+         signal-avg
+
          l2-loss cross-entropy-loss kl-loss
          with-recording
 
          gradient-descent revise
-         revs alpha batch-size
-         set-revs! set-alpha! set-batch-size!
+
+         (hypers revs alpha batch-size mu beta)
 
          zeroes smooth epsilon
-         mu beta
-         set-mu! set-beta!
 
          naked-gradient-descent
          velocity-gradient-descent
