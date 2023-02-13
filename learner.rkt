@@ -45,7 +45,7 @@
  max-ρ sum-cols-ρ correlate-ρ
 
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
- exp-0 log-0 abs-0 rectify-0
+ exp-0 log-0 abs-0 rectify-0 sqrt-0
 
  sum-1 argmax-1 max-1
 

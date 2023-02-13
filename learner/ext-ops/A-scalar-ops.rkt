@@ -47,6 +47,11 @@
         ((< x 0) (- z))
         (else z)))))
 
+(define sqrt-0
+  (prim1 sqrt
+    (λ (x z)
+      (/ z (* 2 (sqrt x))))))
+
 ;;------------------------------------
 ;; Extended functions.
 ;;------------------------------------
@@ -61,9 +66,7 @@
 (define d-log (ext1 log-0 0))
 (define d-abs (ext1 abs-0 0))
 
-(define d-sqrt
-  (λ (a)
-    (d-expt a 1/2)))
+(define d-sqrt (ext1 sqrt-0 0))
 
 (define d-sqr
   (λ (x)
@@ -73,7 +76,7 @@
 
 (provide
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
- exp-0 log-0 abs-0
+ exp-0 log-0 abs-0 sqrt-0
 
  d+ d- d* d/
  d-expt d-exp d-log d-abs

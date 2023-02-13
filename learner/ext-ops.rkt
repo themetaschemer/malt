@@ -15,7 +15,7 @@
          d-sqrt d-sqr
 
          +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
-         exp-0 log-0 abs-0
+         exp-0 log-0 abs-0 sqrt-0
 
          +-ρ --ρ *-ρ /-ρ
          expt-ρ exp-ρ log-ρ abs-ρ
