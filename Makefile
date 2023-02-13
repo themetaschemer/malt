@@ -195,10 +195,10 @@ SOURCES=$(LEARNER_SOURCES)\
 TO_PRINT=$(SOURCES)
 
 # Documentation files
-DOC_DIR=docs
-DOC_ROOT=malt.scrbl
+DOC_DIR=scribblings/docs
+DOC_ROOT=scribblings/malt.scrbl
 DOC_FILES=\
-  malt.scrbl\
+  scribblings/malt.scrbl\
   $(DOC_DIR)/entry-points.scrbl\
   $(DOC_DIR)/list-functions.scrbl\
   $(DOC_DIR)/tensor-functions.scrbl\
