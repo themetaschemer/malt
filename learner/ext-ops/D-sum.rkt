@@ -2,9 +2,6 @@
 
 (require (only-in "../tensors.rkt" ext1 tref tlen))
 (require (only-in (rename-in "A-scalar-ops.ss" (d+ +)) +))
-(require "../autodiff.rkt")
-
-(require "A-scalar-ops.ss")
 
 (define sum-1
   (λ (t)

@@ -1,5 +1,5 @@
 #lang scribble/manual
-@(require (for-label (for-label (except-in racket + - / * expt exp abs log max sqrt argmax sqr < > = >= <=)
+@(require (for-label (for-label (except-in racket + - / * expt exp abs log max sqrt argmax sqr < > = >= <= flatten)
                               "../main.rkt")))
 
 @title{Malt - A minimalist deep learning toolkit}

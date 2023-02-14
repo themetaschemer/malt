@@ -1,9 +1,11 @@
 (module+ test
   (require rackunit)
-  (require "C-star-2-1.ss")
-  (require (only-in (rename-in "A-scalar-ops.ss" (d-sqr sqr))
+  (require "C-star-2-1.rkt")
+  (require (only-in "A-scalar-ops.rkt" d* d-))
+  (require (only-in (rename-in "A-scalar-ops.rkt" (d-sqr sqr))
                     sqr))
   (require (only-in "../tensors.rkt" tensor))
+  (require (only-in "../autodiff.rkt" check-ρ-∇ check-dual-equal? ∇¹))
 
   (let ((a (tensor 3 4 5)))
     (check-ρ-∇ (d-sum a) 12

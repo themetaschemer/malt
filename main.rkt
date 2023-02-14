@@ -24,7 +24,7 @@
   + - * / rectify
   exp log expt sqrt sqr
   sum abs *-2-1 argmax
-  max sum-cols correlate
+  max sum-cols correlate flatten
   dot-product-2-1 dot-product
 
 
@@ -33,12 +33,13 @@
  exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ
+ flatten-ρ
 
  ;; Differentiable scalar base-rank operators
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
  exp-0 log-0 abs-0 rectify-0 sqrt-0
 
- sum-1 argmax-1 max-1
+ sum-1 argmax-1 max-1 flatten-2
 
  ;; Comparators
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0

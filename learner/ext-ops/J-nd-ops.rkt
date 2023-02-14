@@ -139,3 +139,10 @@
   (ext1 rectify-0 0))
 
 (provide rectify-ρ)
+
+(require (only-in "I-flatten.rkt" flatten-2))
+
+(define flatten-ρ
+  (ext1 flatten-2 2))
+
+(provide flatten-ρ)

@@ -8,7 +8,8 @@
 (require "ext-ops/F-max.rkt")
 (require "ext-ops/G-correlate.rkt")
 (require "ext-ops/H-rectify.rkt")
-(require "ext-ops/I-nd-ops.rkt")
+(require "ext-ops/I-flatten.rkt")
+(require "ext-ops/J-nd-ops.rkt")
 
 (provide d+ d- d* d/
          d-expt d-exp d-log d-abs
@@ -35,3 +36,5 @@
 (provide correlate-ρ d-correlate)
 
 (provide rectify-0 rectify rectify-ρ)
+
+(provide flatten-2 flatten flatten-ρ)
