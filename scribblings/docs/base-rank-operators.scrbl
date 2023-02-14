@@ -35,6 +35,10 @@ are differentiable.
   Returns the natural (to the base @italic{e}) logarithm @racket[a].
 }
 
+@defproc[(sqrt-0 [a scalar?]) scalar?]{
+  Returns the non-negative square root of @racket[a].
+}
+
 @defproc[(abs-0 [a scalar?]) scalar?]{
   Returns absolute value of @racket[a].
 }
