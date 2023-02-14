@@ -37,9 +37,9 @@
 
 (define print-note
   (λ ()
-    (let ((cep (current-error-port)))
+    (let ((cep (current-output-port)))
       (fprintf cep  "--------------------------------------------------------~%")
-      (fprintf cep "A WORD OF CAUTION ABOUT IRIS~%")
+      (fprintf cep "A WORD OF ADVICE ABOUT IRIS~%")
       (fprintf cep "--------------------------------------------------------~%~%")
       (fprintf cep "The smallness of iris-network combined with the stochastic nature of init-theta~%")
       (fprintf cep "often causes variations in the final hyperparameters found by grid-search.~%")
