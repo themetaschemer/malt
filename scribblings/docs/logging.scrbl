@@ -24,6 +24,11 @@ Functions for logging information and reporting moving averages of some types of
   the @racket[name] @racket['loss].
 }
 
+@defproc[(log-malt-reset) void?]{
+  Resets the logging window for @racket[record] and @racket[with-recording]. The average is set to @racket[0.0] and the count of
+  revisions is set to @racket[0].
+}
+
 @deftogether[(
 @defform*[((log-malt-fatal string-expr)
            (log-malt-fatal format-string-expr v ...))]
