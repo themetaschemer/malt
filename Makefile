@@ -189,6 +189,8 @@ SOURCES=$(LEARNER_SOURCES)\
   base-no-duals.rkt\
   base-no-overrides.rkt\
   base-no-duals-no-overrides.rkt\
+  interlude-V.rkt\
+  appendix-B.rkt\
   main.rkt
 
 # Files applicable to print.
