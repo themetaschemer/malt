@@ -23,3 +23,9 @@ automatically provided from the module. The initial values of @racket[h ...] are
   Sequentially evaluates @racket[expr ...] for each @racket[h] being assigned a value from @racket[v ...]. All combinations
   are tried until @racket[stop?] invoked on the value returned by @racket[(begin expr ...)] returns @racket[#t].
 }
+
+@defform[(hypers h ...)]{
+  A @racket[provide] sub-form that exports the hyperparameters @racket[h ...]. This @racket[provide] sub-form is only needed
+  when re-exporting hypers imported from other modules. By default, @racket[declare-hypers] will export the hyper from the module where
+  it was declared.
+}
