@@ -186,8 +186,11 @@ For example,
 ```racket
 (16080 0.072560) [Memory: 139334768][Window size 6]
 ```
-This says that the average of the loss across the last 6 batches at the 16080'th revision was 0.07256, while the system consumed about 139MB of memory. The count of revisions is cumulative, but can be reset by(log-malt-reset)Morse examples are currently set up to run 20000 revisions during training.
-
+This says that the average of the loss across the last 6 batches at the 16080'th revision was 0.07256, while the system consumed about 139MB of memory. The count of revisions is cumulative, but can be reset by
+```racket
+(log-malt-reset)
+```
+Morse examples are currently set up to run 20000 revisions during training.
 
 
 # Switching tensor representations
