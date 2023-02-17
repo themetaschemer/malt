@@ -1,7 +1,6 @@
 # Introduction
-Malt is a minimalist deep learning toolkit that is designed to support
-the book @italic{The Little Learner}, by Daniel P. Friedman and
-Anurag Mendhekar.
+Malt is a minimalist deep learning toolkit that is designed to support the book *The Little Learner: A Straight Line to Deep Learning*,
+by Daniel P. Friedman and Anurag Mendhekar.
 
 The framework provides for tensors, automatic differentiation,
 gradient descent, commonly used loss functions, layer functions and
@@ -11,7 +10,7 @@ While it has started off as a pedagogical tool, it is designed with
 the future in mind and we are seeking fellow enthusiasts who would be
 interested in making it production worthy.
 
-# Preequisites.
+# Prerequisites.
 
 Malt is built on Racket. It can be downloaded [here](https://download.racket-lang.org/).
 
@@ -25,11 +24,19 @@ raco pkg install malt
 ```
 ## Install using the Git repository
 Another way of installing malt is to clone the git repository and install it as a local package.
+For MacOS and Linux:
 ```
 git clone https://github.com/themetaschemer/malt.git
 cd malt
 make
 make install
+```
+
+For Windows
+```
+git clone https://github.com/themetaschemer/malt.git
+cd malt
+raco pkg install
 ```
 
 # How the code is structured
@@ -200,8 +207,16 @@ file called `local.cfg` in your local clone of this repository with the followin
 (tensor-implementation <representation-name>)
 ```
 Then, rebuild the package
-```
+
+MacOS and Linux:
+```shell
 make clean && make
+```
+
+Windows:
+```shell
+raco setup --clean malt
+raco test -y -p malt
 ```
 
 # Reference
