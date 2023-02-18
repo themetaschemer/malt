@@ -59,4 +59,20 @@
   (check-equal? (reshape '(3 2) r2-td)
                 (tensor (tensor 3.0 4.0)
                         (tensor 5.0 7.0)
-                        (tensor 8.0 9.0))))
+                        (tensor 8.0 9.0)))
+
+    (check-exn exn:fail?
+             (λ ()
+               (tensor "1 2" 1 2)))
+
+  (check-exn exn:fail?
+             (λ ()
+               (tensor)))
+
+  (check-exn exn:fail?
+             (λ ()
+               (tensor 1 (tensor 2 3))))
+
+  (check-exn exn:fail?
+             (λ ()
+               (tensor tensor (tensor 2 3)))))

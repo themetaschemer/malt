@@ -135,7 +135,7 @@
                                 (cdr args))))
                      (else #f)))
         (error 'tensor
-               "Mismatched shapes: ~a~%"
+               "Cannot construct a tensor out of these elements: ~a~%"
                args)))))
 
 (define build-tensor

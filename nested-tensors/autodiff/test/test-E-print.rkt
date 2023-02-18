@@ -20,7 +20,7 @@
             deep-tensor deep-tensor deep-tensor deep-tensor deep-tensor))
 
   (define not-a-tensor
-    (tensor deep-tensor long-tensor))
+    (vector deep-tensor long-tensor))
 
   (check-equal? (call/cc (λ (return) (tensor-like-vector? long-tensor return))) '(15))
   (check-equal? (call/cc (λ (return) (tensor-like-vector? deep-tensor return))) '(15 15))

@@ -19,7 +19,6 @@
 (define tlen vector-length)
 (define tmap vector-map)
 (define list->tensor list->vector)
-(define tensor vector)
 (define scalar? number?)
 (define tensor?
   (λ (t)
@@ -51,4 +50,4 @@
 (include "test/test-B-tensor-basics.rkt")
 
 (provide tref tlen tmap list->tensor scalar?
-         tensor tensor? build-tensor trefs)
+         tensor? build-tensor trefs)
