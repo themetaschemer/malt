@@ -1,7 +1,7 @@
 #lang racket
 
-(require malt/learner/no-overrides)
+(require "learner/no-overrides.rkt")
 (require "ports.rkt")
 (printable-maker make-printable)
 
-(provide (all-from-out malt/learner/no-overrides))
+(provide (all-from-out "learner/no-overrides.rkt"))

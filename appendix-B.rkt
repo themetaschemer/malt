@@ -1,7 +1,7 @@
 #lang racket
 
-(require malt/nested-tensors/no-overrides)
+(require "nested-tensors/no-overrides.rkt")
 (require "ports.rkt")
 (printable-maker make-printable)
 
-(provide (all-from-out malt/nested-tensors/no-overrides))
+(provide (all-from-out "nested-tensors/no-overrides.rkt"))
