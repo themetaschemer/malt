@@ -12,7 +12,7 @@ interested in making it production worthy.
 
 # Prerequisites.
 
-Malt is built on Racket. It can be downloaded [here](https://download.racket-lang.org/).
+Malt is built on Racket. It can be downloaded [here](https://download.racket-lang.org/). The minimum version this code requires is Racket 8.2.
 
 # Installation
 There are two ways to install and use `malt`.
