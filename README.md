@@ -69,6 +69,13 @@ descent.
 Finally, the directory `malt/malted` contains all the machine learning
 specific code developed in *The Little Learner*.
 
+# Using Rackunit
+If you're going to be writing unit tests, `check-=` and `check-equal?` will not work
+as expected with numbers and tensors. Instead of these, use `check-dual-equal?` which
+will check scalars and tensors for equality within a tolerance (currently fixed at
+0.0001).
+
+
 # Running the examples
 
 The examples described in the later chapters of *The Little Learner*, `iris` and `morse`, are located in the
