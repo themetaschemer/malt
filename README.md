@@ -69,6 +69,22 @@ descent.
 Finally, the directory `malt/malted` contains all the machine learning
 specific code developed in *The Little Learner*.
 
+# Interlude V
+Interlude V provides the semantics of function extension. The actual implementations
+of the extension primitives are implementation dependent and provided separatesly
+by each  of the tensor representations. To allow for exploration and experimentation
+of the code in Interlude V, please use the following:
+
+```racket
+#lang racket
+(require malt/interlude-V)
+```
+
+This will switch the representation of tensors for the remainder of the file,
+but tensors exported out from this file may not work well if the
+rest of the code is built with a different representation of tensors (see below to
+switch the default representation of tensors).
+
 # Using Rackunit
 If you're going to be writing unit tests, `check-=` and `check-equal?` will not work
 as expected with numbers and tensors. Instead of these, use `check-dual-equal?` which
