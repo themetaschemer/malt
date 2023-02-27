@@ -21,7 +21,7 @@
  trace-print check-dual-equal? check-ρ-∇
 
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
- exp-0 log-0 abs-0 sqrt-0
+ exp-0 log-0 abs-0 sqrt-0 sum-1
  flatten-2
 
  d+ d- d* d/ (rename-out (rectify d-rectify))
