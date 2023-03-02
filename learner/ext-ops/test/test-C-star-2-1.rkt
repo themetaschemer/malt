@@ -10,6 +10,13 @@
                (list (tensor (tensor 2.0 3.0 4.0 5.0) (tensor 2.0 3.0 4.0 5.0))
                      (tensor 10.0 12.0 14.0 16.0))))
 
+  (let ((a (tensor (tensor 1 2) (tensor 3 4)))
+        (b (tensor 1 0)))
+    (check-ρ-∇ (d*-2-1 a b)
+               (tensor (tensor 1 0) (tensor 3 0))
+               (list (tensor (tensor 1.0 0.0) (tensor 1.0 0.0))
+                     (tensor 4.0 6.0))))
+
   (let ((a (tensor (tensor 3 4 5 6)
                    (tensor 7 8 9 10)))
         (b (tensor (tensor 2 3 4 5)
