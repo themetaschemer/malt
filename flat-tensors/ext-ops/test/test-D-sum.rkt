@@ -5,6 +5,8 @@
   (require (only-in "A-scalar-ops.ss" d-sqr d* d-))
 
   (let ((a (tensor 3 4 5)))
+    (check-ρ-∇ (sum-1 a) 12
+               (list (tensor 1.0 1.0 1.0)))
     (check-ρ-∇ (d-sum a) 12
                (list (tensor 1.0 1.0 1.0))))
 
@@ -26,6 +28,9 @@
   (let ((a (tensor (tensor 3 4 5 6)
                    (tensor 7 8 9 10)))
         (b (tensor 2 3 4 5)))
+
+    (check-ρ-∇ (sum-1 b) 14
+               (list (tensor 1.0 1.0 1.0 1.0)))
 
     (check-ρ-∇ (dot-product a b)
                (tensor 68 124)

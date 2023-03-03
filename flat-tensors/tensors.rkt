@@ -15,7 +15,7 @@
 
 (provide ext1-ρ ext2-ρ ext1-∇ ext2-∇)
 
-(provide flat? flat-shape flat-store flat-offset size-of strides)
+(provide flat flat? flat-shape flat-store flat-offset size-of strides)
 
 ;; These will get overriden by duals
 (provide tensor?)
