@@ -2,7 +2,7 @@
 
 (require
  (except-in "flat-tensors/tensors.rkt"
-   rank shape reshape trefs tensor? tlen ref refr))
+   rank shape reshape tref trefs tensor? tlen ref refr))
 
 (require "flat-tensors/autodiff.rkt")
 (require "flat-tensors/ext-ops.rkt")

@@ -28,6 +28,10 @@
   (λ (t b)
     (trefs (ρ t) b)))
 
+(define d-tref
+  (λ (t i)
+    (tref (ρ t) i)))
+
 (define d-tensor?
   (λ (t)
     (tensor? (ρ t))))
@@ -44,4 +48,4 @@
   (λ (l i)
     (refr l (ρ i))))
 
-(provide d-rank d-shape d-reshape d-trefs d-tensor? d-tlen d-ref d-refr)
+(provide d-rank d-shape d-reshape d-trefs d-tensor? d-tlen d-ref d-refr d-tref)

@@ -11,6 +11,7 @@
 (provide (rename-out (d-rank rank)
                      (d-shape shape)
                      (d-reshape reshape)
+                     (d-tref tref)
                      (d-trefs trefs)
                      (d-tensor? tensor?)
                      (d-tlen tlen)
