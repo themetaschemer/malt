@@ -82,7 +82,7 @@
 (define ensure-ρ-callable-1
   (λ (ρ-fn shape-fn)
     (cond
-      ((expects-flat? ρ-fn)
+      ((expects-preallocated? ρ-fn)
        (λ (ra)
          (apply-flat-ρ-fn-1 ρ-fn ra shape-fn)))
       (else ρ-fn))))
@@ -90,7 +90,7 @@
 (define ensure-∇-callable-1
   (λ (∇-fn shape-fn)
     (cond
-      ((expects-flat? ∇-fn)
+      ((expects-preallocated? ∇-fn)
        (λ (ra z)
          (apply-flat-∇-fn-1 ∇-fn ra z shape-fn)))
       (else ∇-fn))))
@@ -98,7 +98,7 @@
 (define ensure-ρ-callable-2
   (λ (ρ-fn shape-fn)
     (cond
-      ((expects-flat? ρ-fn)
+      ((expects-preallocated? ρ-fn)
        (λ (ra rb)
          (apply-flat-ρ-fn-2 ρ-fn ra rb shape-fn)))
       (else ρ-fn))))
@@ -106,7 +106,7 @@
 (define ensure-∇-callable-2
   (λ (∇-fn shape-fn)
     (cond
-      ((expects-flat? ∇-fn)
+      ((expects-preallocated? ∇-fn)
        (λ (ra rb z)
          (apply-flat-∇-fn-1 ∇-fn ra rb z shape-fn)))
       (else ∇-fn))))
@@ -199,12 +199,6 @@
            (values
              (flat in-shape-a g0 0)
              (flat in-shape-b g1 0))))))))
-
-(define expects-flat?
-  (λ (f)
-    (let ((a (procedure-arity f)))
-      (and (integer? a)
-        (>= a 6)))))
 
 ;;----------------------------
 ;; Dualized tensor op creators

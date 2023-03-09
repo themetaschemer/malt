@@ -13,7 +13,7 @@
 (provide len ref refr)
 (provide tref tlen list->tensor tensor build-tensor trefs)
 
-(provide ext1-ρ ext2-ρ ext1-∇ ext2-∇)
+(provide ext1-ρ ext2-ρ ext1-∇ ext2-∇ expects-preallocated?)
 
 (provide flat flat? flat-shape flat-store flat-offset size-of strides)
 
