@@ -31,12 +31,15 @@
     (cond
       ((of-rank? n t) (desc-u g t u))
       ((of-rank? m u) (desc-t g t u))
-      ((= (tlen t) (tlen u)) (tmap g t u))
+      ((= (rank t) (rank u))
+       (if (= (tlen t) (tlen u))
+           (tmap g t u)
+           (error 'ext
+              "Shapes are incompatible for ext2: ~a and ~a for min ranks ~a and ~a~%"
+              (shape t) (shape u) n m)))
       ((rank> t u) (desc-t g t u))
       ((rank> u t) (desc-u g t u)) ;; Slight variation from the book, to add error checking
-      (else (error 'ext
-              "Shapes are incompatible for ext2: ~a and ~a for min ranks ~a and ~a~%"
-              (shape t) (shape u) n m)))))
+    )))
 
 (define desc-t
   (λ (g t u)
