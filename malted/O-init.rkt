@@ -1,6 +1,7 @@
 #lang racket
 
-(require "../base-no-duals.rkt")
+(require (except-in "../base-no-duals.rkt" sqrt))
+(require (only-in "../base.rkt" sqrt))
 (require "B-layer-fns.ss")
 
 (define init-theta
