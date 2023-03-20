@@ -226,6 +226,7 @@ DOC_FILES=\
 
 # Where raco is installed
 RACO="$(shell which raco)"
+RACKET="$(shell which racket)"
 
 # Optional ARG when provided
 ARG=$(filter-out $@,$(MAKECMDGOALS))
@@ -247,6 +248,15 @@ one:
 
 clean:
 	find . -name 'compiled' | xargs -I% rm -rf %
+
+set-learner:
+	$(RACKET) -e "(require malt/set-impl) (set-impl 'learner)"
+
+set-nested-tensors:
+	$(RACKET) -e "(require malt/set-impl) (set-impl 'nested)"
+
+set-flat-tensors:
+	$(RACKET) -e "(require malt/set-impl) (set-impl 'flat-tensors)"
 
 doc: $(DOC_FILES)
 	mkdir -p html

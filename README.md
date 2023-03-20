@@ -48,7 +48,8 @@ directories, `malt/learner`, `malt/nested-tensors`, and `malt/flat-tensors`.
 A corresponding `.rkt` file with the same name as the
 directory makes the representations available through a single
 `require`, e.g. `(require malt/nested-tensors)`. The default representation
-is `flat-tensors`, but in some cases, it helps to have other representations.
+is `learner`, but in some cases (particularly when you want to run the `morse` example), 
+it helps to have other representations.
 
 The `learner` representation is the simplest and is the one described in *Appendix A*.
 The `nested-tensors` representation is more complex, but more efficient than `learner` and is described in the first part of *Appendix B*.
@@ -174,6 +175,9 @@ hyperparameters for accuracy that is as high possible for the
 `iris-test-xs` and `iris-test-ys`.
 
 ## Morse
+IMPORTANT: The `morse` example requires either the `flat-tensors` or `nested-tensors` implementation. 
+Please switch to one of those implementations following the instructions [below](#switching-tensor-representations).
+
 The morse example in the book also requires its own data set to be loaded.
 It is done by starting a racket file as follows.
 
@@ -224,8 +228,10 @@ Morse examples are currently set up to run 20000 revisions during training.
 
 
 # Switching tensor representations
+
+## If you have cloned this repository
 In order switch representations, create a
-file called `local.cfg` in your local clone of this repository with the following line, and replace `<impl-name>` with one of `learner`, `nested-tensors` or `flat-tensors`. The default implementation is `flat-tensors`.
+file called `local.cfg` in your local clone of this repository with the following line, and replace `<impl-name>` with one of `learner`, `nested-tensors` or `flat-tensors`. The default implementation is `learner`.
 ```racket
 (tensor-implementation <representation-name>)
 ```
@@ -236,10 +242,22 @@ MacOS and Linux:
 make clean && make
 ```
 
+For convenience, the following make targets are also provided: `set-learner`, `set-nested-tensors`, `set-flat-tensors`. So, for example, switching to the `flat-tensors` implementation can be accomplished by
+```shell
+make set-flat-tensors
+```
+
 Windows:
 ```shell
 raco setup --clean malt
 raco test -y -p malt
+```
+
+## If you've installed malt as a Racket package
+
+Run the following on the command line (on MacOS, Linux and Windows).
+```shell
+racket -e "(require malt/set-impl) (set-impl 'learner)"
 ```
 
 # Reference

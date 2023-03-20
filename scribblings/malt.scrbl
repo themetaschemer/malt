@@ -40,3 +40,4 @@ interested in making it production worthy.
 @include-section["docs/misc.scrbl"]
 @include-section["docs/logging.scrbl"]
 @include-section["docs/helpers.scrbl"]
+@include-section["docs/set-impl.scrbl"]

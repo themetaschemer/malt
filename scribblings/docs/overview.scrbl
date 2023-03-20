@@ -69,8 +69,9 @@ brief in @italic{Appendix B. I could have raced all day} of @italic{The Little L
 }
 ]
 
-The default representation for tensors in Malt is @racket[flat-tensors]. The Malt source repository can be configured
-and recompiled to choose different tensor representations in order to experiment with them.
+The default representation for tensors in Malt is @racket[learner]. The Malt source repository can be configured
+and recompiled to choose different tensor representations in order to experiment with them. To set a specific implementation, see @secref{set-impl}.
+
 
 The following types are used to denote entities related to duals.
 @itemlist[

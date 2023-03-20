@@ -34,7 +34,7 @@
 
 ;; Default settings
 (define default-preferences
-  `((tensor-implementation flat-tensors)))
+  `((tensor-implementation learner)))
 
 (when (not (settings))
   (init-settings))
