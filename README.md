@@ -263,3 +263,16 @@ racket -e "(require malt/set-impl) (set-impl 'learner)"
 # Reference
 The documentation for the code is available [here](https://docs.racket-lang.org/malt/index.html). Additional information is
 also available at [www.thelittlelearner.com](https://www.thelittlelearner.com).
+
+# Changelog
+
+3/19/2023 - As of commit c8220b5, the default implementation of
+tensors has been switched to `learner` to enable all readers to be
+able to run all the code in the book. The `flat-tensors`
+implementation has limitations on how function extension is done which
+was creating issues for readers.  All documentation and instructions
+are modified to reflect this. A new mechanism to set the
+implementation using Racket is now provided for users to be able to
+switch implementations if they installed `malt` as a Racket package.
+The `flat-tensors` implementation is required only to execute the
+`morse` example, and users can switch as required.
