@@ -2,6 +2,9 @@
 (require "../../flat-tensors/ext-impl.rkt")
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 
+;; TODO: Ensure that any calls to tp-force are occurring only as a recursive
+;; call in this file. The only place we tp-force is in ρ, κ and print functions.
+
 ;; tensor computations
 (struct tcomp ())
 (struct tcomp-list->tpromise-list tcomp (lst) #:transparent)
@@ -48,6 +51,7 @@
   (λ (args)
     (cond
      [(number? (car args)) (apply flat:tensor args)]
+     ;; TODO: Add the below map as another tcomp
      [else (merge-flats (map tp-force args))])))
 
 (define ensure-shape
@@ -360,6 +364,9 @@
           (tcomp-ext1-∇ tp zp f m shape-fn)
           (tp-shape tp)))))))
 
+;; TODO: make sure that all functions being stored in tcomp structs should be
+;; prims. Other functions should be inlined into tp-tcomp by passing all
+;; parameters to these functions through the tcomp struct.
 (define tp-d-ext2^
   (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
     (let* ((s0 (tp-shape tp-t0))
