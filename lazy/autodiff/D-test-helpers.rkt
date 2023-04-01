@@ -13,16 +13,17 @@
 (define-binary-check (check-dual-equal? equal-wt? actual expected))
 (define-check (ρ-∇-checker fn args ans grads)
   (let* ((y (tp-force (apply fn args)))
-         (g (tp-force (apply (∇¹ fn) args))))
+         (g (tp-force (apply (∇¹ fn) args)))
+         (ans-ρ (ρ ans)))
     (cond
-      ((and (equal-wt? ans (ρ y))
+      ((and (equal-wt? ans-ρ (ρ y))
             (equal-wt? grads (ρ g))) (void))
-      ((equal-wt? ans (ρ y))
+      ((equal-wt? ans-ρ (ρ y))
        (fail-check (format "Gradients failed to match.~%actual:~%~s~%expected:~s~%"
                            (ρ g) grads)))
       (else
        (fail-check (format "Answers failed to match.~%actual:~%~s~%expected:~s~%"
-                           (ρ y) ans))))))
+                           (ρ y) ans-ρ))))))
 
 (define-syntax check-ρ-∇
   (syntax-rules ()
