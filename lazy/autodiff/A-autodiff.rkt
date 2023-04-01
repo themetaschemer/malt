@@ -21,15 +21,15 @@
 (define ρ
   (λ (d)
     (cond
+      ((tensor? d) (tp-force d) d)
       ((dual? d) (tp-force (vector-ref d 1))
-                 (vector-ref d 1))
+                 (scalarize (vector-ref d 1)))
       (else d))))
 
 (define κ
   (λ (d)
     (cond
-      ((dual? d) (tp-force (vector-ref d 2))
-                 (vector-ref d 2))
+      ((dual? d) (tp-force (vector-ref d 2)))
       (else end-of-chain))))
 
 (define scalar?

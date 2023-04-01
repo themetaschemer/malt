@@ -311,7 +311,7 @@
 (define scalarize
   (λ (t)
     (cond
-      ((null? (flat-shape t))
+      ((and (flat? t) (null? (flat-shape t)))
        (vref (flat-store t) 0))
       (else t))))
 
