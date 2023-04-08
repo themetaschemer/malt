@@ -30,7 +30,7 @@
       (dual (ρ-fn ra)
         (λ (d z σ)
           (let ((ga (∇-fn ra z)))
-            ((κ da) da ga σ)))))))
+            ((κ da) da ga #;(tp-force ga) σ)))))))
 
 (define prim2
   (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
@@ -49,8 +49,9 @@
       (dual (ρ-fn ra rb)
         (λ (d z σ)
           (let-values (((ga gb) (∇-fn ra rb z)))
-            (let ((σ-hat ((κ da) da ga σ)))
-              ((κ db) db gb σ-hat))))))))
+            ;; TODO: remove the tp-force here
+            (let ((σ-hat ((κ da) da (tp-force ga) σ)))
+              ((κ db) db (tp-force gb) σ-hat))))))))
 
 ;;----------------------------
 ;; Dualized tensor op creators

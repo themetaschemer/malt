@@ -32,7 +32,7 @@
 
   (define test-premap-lt (tensor (tensor 1 2 3) (tensor 4 5 6)))
   (define test-mapped-lt (tp-tmap add1 test-premap-lt))
-  (check-true (flat? (tpromise-tensor test-premap-lt)))
+  (check-false (flat? (tpromise-tensor test-premap-lt)))
   (check-true (tcomp? (tpromise-tensor test-mapped-lt)))
   (check-equal? (flat-store (tp-force test-mapped-lt)) (vector 2 3 4 5 6 7))
   (check-equal? (flat-shape (tp-force test-mapped-lt)) (flat-shape (tp-force test-premap-lt)))

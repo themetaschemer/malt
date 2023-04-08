@@ -2,8 +2,6 @@
 (require "../../flat-tensors/ext-impl.rkt")
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 
-;; TODO: Ensure that any calls to tp-force are occurring only as a recursive
-;; call in this file. The only place we tp-force is in ρ, κ and print functions.
 
 ;; tensor computations
 (struct tcomp ())
@@ -11,15 +9,18 @@
 (struct tcomp-tp-map tcomp (f tp) #:transparent)
 (struct tcomp-build-tpromise tcomp (s f) #:transparent)
 (struct tcomp-tp-trefs tcomp (forced b) #:transparent)
-(struct tcomp-ext2-∇ tcomp (b forcer) #:transparent)
+(struct tcomp-ext2-∇ tcomp (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+  #:transparent)
 (struct tcomp-ext1-∇-prealloc tcomp (tp zp f m shape-fn) #:transparent)
 (struct tcomp-ext1-∇ tcomp (tp zp f m shape-fn) #:transparent)
+(struct tcomp-ext2-ρ-scalar tcomp (f tp-t tp-u) #:transparent)
 (struct tcomp-ext2-ρ-prealloc tcomp (tp-t tp-u f m n shape-fn) #:transparent)
 (struct tcomp-ext2-ρ tcomp (tp-t tp-u f m n shape-fn) #:transparent)
 (struct tcomp-ext1-ρ-scalar tcomp (f tp) #:transparent)
 (struct tcomp-ext1-ρ-prealloc tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-ext1-ρ tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-reshape tcomp (s tp) #:transparent)
+(struct tcomp-tensor tcomp (args) #:transparent)
 
 (struct tpromise ((tensor #:mutable) shape)
   #:guard
@@ -44,15 +45,22 @@
 (define tensor
   (λ args
     (ensure-shape args)
-    (let ([inner-flat (tensor-inner-flat args)])
-      (tpromise inner-flat (flat:shape inner-flat)))))
+    (let ((inner-flat (tensor-inner-flat args))
+           )
+      (cond
+        ((flat? inner-flat)
+         (tpromise inner-flat (flat-shape inner-flat)))
+        (else
+         (let* ((inner-shape (tpromise-shape (car args)))
+                (outer (length args))
+                (new-shape (cons outer inner-shape)))
+           (tpromise inner-flat new-shape)))))))
 
 (define tensor-inner-flat
   (λ (args)
     (cond
      [(number? (car args)) (apply flat:tensor args)]
-     ;; TODO: Add the below map as another tcomp
-     [else (merge-flats (map tp-force args))])))
+     [else (tcomp-tensor args)])))
 
 (define ensure-shape
   (λ (args)
@@ -116,11 +124,12 @@
        (flat:build-tensor s f)]
       [(tcomp-tp-trefs forced b)
        (flat:trefs forced b)]
-      [(tcomp-ext2-∇ b forcer)
-       (let ([v (unbox b)])
+      [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+       (let* ([b (if (zero? i) out0 out1)]
+              [v (unbox b)])
          (cond
            ((eqv? v 'uncalculated)
-            (forcer)
+            (ext2-∇-forcer fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1)
             (unbox b))
            (else v)))]
       [(tcomp-ext1-∇-prealloc tp zp f m shape-fn)
@@ -136,6 +145,8 @@
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
          (scalarize (flat-ext1-∇ flat-f m shape-fn t z))))]
+      [(tcomp-ext2-ρ-scalar f tp-t tp-u)
+       (f (tp-force tp-t) (tp-force tp-t))]
       [(tcomp-ext2-ρ-prealloc tp-t tp-u f m n shape-fn)
        (scalarize
           (flat-ext2-ρ f m n shape-fn
@@ -164,8 +175,12 @@
             (flat-ext1-ρ flat-f m shape-fn t))))]
       [(tcomp-reshape s tp)
        (let ([t (tp-force tp #f)])
-         (flat s (flat-store t) (flat-offset t)))])))
+         (flat s (flat-store t) (flat-offset t)))]
+      [(tcomp-tensor args)
 
+       (merge-flats (map tp-force args))])))
+
+;; TODO: This can also be made lazy
 (define tp-force-ref
   (λ (tp i)
     (flat:tref (tp-force tp) i)))
@@ -283,8 +298,7 @@
         [(and (tpromise? tp-t) (tpromise? tp-u)
               (null? (tpromise-shape tp-t))
               (null? (tpromise-shape tp-u)))
-         ;; TODO: move this to a tcomp
-         (f (tp-force tp-t) (tp-force tp-u))]
+         (tpromise (tcomp-ext2-ρ-scalar f tp-t tp-u) '())]
         [(flat:expects-preallocated? f)
          (let* ([s0 (tp-shape tp-t)]
                 [s1 (tp-shape tp-u)]
@@ -364,86 +378,12 @@
           (tcomp-ext1-∇ tp zp f m shape-fn)
           (tp-shape tp)))))))
 
-;; TODO: make sure that all functions being stored in tcomp structs should be
-;; prims. Other functions should be inlined into tp-tcomp by passing all
-;; parameters to these functions through the tcomp struct.
-(define tp-d-ext2^
-  (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
-    (let* ((s0 (tp-shape tp-t0))
-           (sf0 (min-shape r0 s0))
-           (stride0 (flat:size-of sf0))
-
-           (s1 (tp-shape tp-t1))
-           (sf1 (min-shape r1 s1))
-           (stride1 (flat:size-of sf1))
-
-           (sf-z (shape-fn sf0 sf1))
-           (stride-z (flat:size-of sf-z))
-
-           (out0 (box 'uncalculated))
-           (out1 (box 'uncalculated))
-           (forcer
-            (λ ()
-              (let* ((f0 (ensure-flat (tp-force tp-t0)))
-                     (f1 (ensure-flat (tp-force tp-t1)))
-                     (fz (ensure-flat (tp-force tp-z)))
-
-                     (v0 (flat-store f0))
-                     (v1 (flat-store f1))
-                     (vz (flat-store fz))
-
-                     (off0 (flat-offset f0))
-                     (off1 (flat-offset f1))
-                     (offz (flat-offset fz)))
-                (ext2-shapes
-                 s0 s1 r0 r1 sf-z
-                 (λ (sz size-z q0 q1 strides)
-                   (let ((g0 (new-vec (flat:size-of
-                                       s0)
-                                      0.0))
-                         (g1 (new-vec (flat:size-of
-                                       s1)
-                                      0.0)))
-                     (for ([iz (in-range
-                                0
-                                size-z
-                                stride-z)])
-                       (let-values (((i0 i1)
-                                     (idxs
-                                      strides
-                                      iz
-                                      off0
-                                      off1)))
-                         (fᵈ g0 g1 v0 i0
-                             stride0
-                             v1 i1
-                             stride1
-                             vz
-                             (+ offz iz)
-                             stride-z)))
-                     (set-box! out0
-                               (flat s0 g0 0))
-                     (set-box! out1
-                               (flat s1 g1 0)))))))))
-      (values
-       (tpromise (tcomp-ext2-∇ out0 forcer) s0)
-       (tpromise (tcomp-ext2-∇ out1 forcer) s1)))))
-
-(define ensure-tpromise
-  (λ (v)
-    (cond
-      ((scalar? v) (tpromise (ensure-flat v) '()))
-      (else v))))
-
 (define tp-ext2-∇
   (λ (f m n [shape-fn scalar-shape])
     (let ((tp-f
            (λ (f tp-t tp-u tp-z)
-             (let-values (((tp-dt tp-du)
-                           (tp-d-ext2^ f m n shape-fn
-                                       tp-t tp-u tp-z)))
-               (values (tp-scalarize tp-dt)
-                       (tp-scalarize tp-du))))))
+             (tp-d-ext2^ f m n shape-fn
+                         tp-t tp-u tp-z))))
       (λ (tp-t tp-u tp-z)
         (cond
           ((flat:expects-preallocated? f)
@@ -457,6 +397,81 @@
                         (ensure-tpromise tp-t)
                         (ensure-tpromise tp-u)
                         (ensure-tpromise tp-z)))])))))
+
+(define ext2-∇-forcer
+  (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1)
+    (let* ((s0 (tp-shape tp-t0))
+           (sf0 (min-shape r0 s0))
+           (stride0 (flat:size-of sf0))
+
+           (s1 (tp-shape tp-t1))
+           (sf1 (min-shape r1 s1))
+           (stride1 (flat:size-of sf1))
+
+           (sf-z (shape-fn sf0 sf1))
+           (stride-z (flat:size-of sf-z))
+
+           (f0 (ensure-flat (tp-force tp-t0)))
+           (f1 (ensure-flat (tp-force tp-t1)))
+           (fz (ensure-flat (tp-force tp-z)))
+
+           (v0 (flat-store f0))
+           (v1 (flat-store f1))
+           (vz (flat-store fz))
+
+           (off0 (flat-offset f0))
+           (off1 (flat-offset f1))
+           (offz (flat-offset fz)))
+      (ext2-shapes
+       s0 s1 r0 r1 sf-z
+       (λ (sz size-z q0 q1 strides)
+         (let ((g0 (new-vec (flat:size-of
+                             s0)
+                            0.0))
+               (g1 (new-vec (flat:size-of
+                             s1)
+                            0.0)))
+           (for ([iz (in-range
+                      0
+                      size-z
+                      stride-z)])
+             (let-values (((i0 i1)
+                           (idxs
+                            strides
+                            iz
+                            off0
+                            off1)))
+               (fᵈ g0 g1 v0 i0
+                   stride0
+                   v1 i1
+                   stride1
+                   vz
+                   (+ offz iz)
+                   stride-z)))
+           (set-box! out0
+                     (scalarize (flat s0 g0 0)))
+           (set-box! out1
+                     (scalarize (flat s1 g1 0)))))))))
+
+;; TODO: make sure that all functions being stored in tcomp structs should be
+;; prims. Other functions should be inlined into tp-tcomp by passing all
+;; parameters to these functions through the tcomp struct.
+(define tp-d-ext2^
+  (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
+    (let* ((out0 (box 'uncalculated))
+           (out1 (box 'uncalculated)))
+      (values
+       (tpromise (tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 0)
+                 (tp-shape tp-t0))
+       (tpromise (tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 1)
+                 (tp-shape tp-t1))))))
+
+(define ensure-tpromise
+  (λ (v)
+    (cond
+      ((scalar? v) (tpromise (ensure-flat v) '()))
+      (else v))))
+
 
 (define flat-gradient-maker2
   (λ (f m n)
