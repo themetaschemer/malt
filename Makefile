@@ -253,7 +253,7 @@ set-learner:
 	$(RACKET) -e "(require malt/set-impl) (set-impl 'learner)"
 
 set-nested-tensors:
-	$(RACKET) -e "(require malt/set-impl) (set-impl 'nested)"
+	$(RACKET) -e "(require malt/set-impl) (set-impl 'nested-tensors)"
 
 set-flat-tensors:
 	$(RACKET) -e "(require malt/set-impl) (set-impl 'flat-tensors)"
