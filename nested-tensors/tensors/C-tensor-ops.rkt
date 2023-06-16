@@ -96,6 +96,8 @@
 
 (define ensure-shape
   (λ (args)
+    (when (null? args)
+      (error 'tensor "Tensors cannot be empty"))
     ;; First make sure all the args are clean -- they only contain numbers
     ;; or vectors (recursively);
 

@@ -27,7 +27,11 @@
   (λ (t i)
     (vector-ref t (ρ i))))
 
-(define tensor vector)
+(define tensor
+  (λ args
+    (when (null? args)
+      (error 'tensor "Tensors cannot be empty"))
+    (apply vector args)))
 
 (define tlen vector-length)
 

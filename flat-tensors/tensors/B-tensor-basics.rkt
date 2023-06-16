@@ -119,6 +119,8 @@
 
 (define ensure-shape
   (λ (args)
+    (when (null? args)
+      (error 'tensor "Tensors cannot be empty"))
     (let ((checked-shape
            (λ (x) (if (flat? x)
                       (flat-shape x)
