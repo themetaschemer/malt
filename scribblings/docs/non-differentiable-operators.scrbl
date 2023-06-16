@@ -90,6 +90,14 @@ When @racket[t] is of rank higher than 1, the @secref{unary-rules} apply.
 The function is undefined when @racket[t] is of rank less than 1.
 }
 
+@defproc*[([(concat-ρ [t tensor?] [u tensor?]) tensor?])]{
+When @racket[t] and @racket[u] are tensors of rank 1, returns a tensor that is the concatenation of @racket[t] and @racket[u].
+
+Otherwise, the @secref{binary-rules} apply.
+
+The function is undefined when @racket[t] or @racket[u] is of rank less than 1.
+}
+
 @defproc[(dot-product-ρ [t0 tensor?] [t1 tensor?]) tensor?]{
 When @racket[t0] and @racket[t1] are tensors of rank 1 and the same shape,
 returns a scalar @italic{s} formed

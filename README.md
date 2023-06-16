@@ -48,7 +48,7 @@ directories, `malt/learner`, `malt/nested-tensors`, and `malt/flat-tensors`.
 A corresponding `.rkt` file with the same name as the
 directory makes the representations available through a single
 `require`, e.g. `(require malt/nested-tensors)`. The default representation
-is `learner`, but in some cases (particularly when you want to run the `morse` example), 
+is `learner`, but in some cases (particularly when you want to run the `morse` example),
 it helps to have other representations.
 
 The `learner` representation is the simplest and is the one described in *Appendix A*.
@@ -175,7 +175,7 @@ hyperparameters for accuracy that is as high possible for the
 `iris-test-xs` and `iris-test-ys`.
 
 ## Morse
-IMPORTANT: The `morse` example requires either the `flat-tensors` or `nested-tensors` implementation. 
+IMPORTANT: The `morse` example requires either the `flat-tensors` or `nested-tensors` implementation.
 Please switch to one of those implementations following the instructions [below](#switching-tensor-representations).
 
 The morse example in the book also requires its own data set to be loaded.
@@ -265,6 +265,8 @@ The documentation for the code is available [here](https://docs.racket-lang.org/
 also available at [www.thelittlelearner.com](https://www.thelittlelearner.com).
 
 # Changelog
+
+6/16/2023 - Added `concat` operation to concatenate tensors in all three implementations.
 
 3/19/2023 - As of commit c8220b5, the default implementation of
 tensors has been switched to `learner` to enable all readers to be

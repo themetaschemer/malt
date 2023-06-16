@@ -10,6 +10,7 @@
 (require "ext-ops/H-rectify.rkt")
 (require "ext-ops/I-flatten.rkt")
 (require "ext-ops/J-nd-ops.rkt")
+(require "ext-ops/K-concat.rkt")
 
 (provide d+ d- d* d/
          d-expt d-exp d-log d-abs
@@ -38,3 +39,5 @@
 (provide rectify-0 rectify rectify-ρ)
 
 (provide flatten-2 flatten flatten-ρ)
+
+(provide concat-1-1 concat concat-ρ)

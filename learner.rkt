@@ -36,17 +36,17 @@
              (d-sum sum) (d-abs abs) (d*-2-1 *-2-1) (d-argmax argmax)
              (d-max max) (d-sum-cols sum-cols) (d-correlate correlate))
 
- rectify flatten
+ rectify flatten concat
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
  exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
- max-ρ sum-cols-ρ correlate-ρ flatten-ρ
+ max-ρ sum-cols-ρ correlate-ρ flatten-ρ concat-ρ
 
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
  exp-0 log-0 abs-0 rectify-0 sqrt-0
 
- sum-1 argmax-1 max-1 flatten-2
+ sum-1 argmax-1 max-1 flatten-2 concat-1-1
 
 
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
