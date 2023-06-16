@@ -23,9 +23,9 @@
  exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ
- flatten-ρ
+ flatten-ρ concat-ρ
 
- flatten-2
+ flatten-2 concat-1-1
 
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
  =-1 <-1 >-1 <=-1 >=-1 !=-1)

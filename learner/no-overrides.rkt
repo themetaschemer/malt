@@ -22,19 +22,20 @@
 
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
  exp-0 log-0 abs-0 sqrt-0 sum-1
- flatten-2
+ flatten-2 concat-1-1
 
  d+ d- d* d/ (rename-out (rectify d-rectify))
  d-exp d-log d-expt d-sqrt d-sqr
  d-sum d-abs d*-2-1 d-argmax
  d-max d-sum-cols d-correlate
  (rename-out (flatten d-flatten))
+ (rename-out (concat d-concat))
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
  exp-ρ log-ρ expt-ρ sqrt-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ
- flatten-ρ
+ flatten-ρ concat-ρ
 
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
  =-1 <-1 >-1 <=-1 >=-1 !=-1)

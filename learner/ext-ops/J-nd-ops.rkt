@@ -146,3 +146,10 @@
   (ext1 flatten-2 2))
 
 (provide flatten-ρ)
+
+(require (only-in "K-concat.rkt" concat-1-1))
+
+(define concat-ρ
+  (ext1 concat-1-1 1))
+
+(provide concat-ρ)
