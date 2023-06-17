@@ -32,13 +32,13 @@
  d-exp d-log d-expt d-sqrt d-sqr
  d-sum d-abs d*-2-1 d-argmax
  d-max d-sum-cols d-correlate
- d-flatten d-concat
+ d-flatten d-concat d-concat-n
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
  exp-ρ log-ρ expt-ρ sqrt-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ
- flatten-ρ concat-ρ
+ flatten-ρ concat-ρ concat-n-ρ
 
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
  =-1 <-1 >-1 <=-1 >=-1 !=-1)

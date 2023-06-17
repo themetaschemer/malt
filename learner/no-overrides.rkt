@@ -30,6 +30,7 @@
  d-max d-sum-cols d-correlate
  (rename-out (flatten d-flatten))
  (rename-out (concat d-concat))
+ (rename-out (concat-n d-concat-n))
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
  exp-ρ log-ρ expt-ρ sqrt-ρ

@@ -40,4 +40,4 @@
 
 (provide flatten-2 flatten flatten-ρ)
 
-(provide concat-1-1 concat concat-ρ)
+(provide concat-1-1 concat concat-ρ concat-n concat-n-ρ)

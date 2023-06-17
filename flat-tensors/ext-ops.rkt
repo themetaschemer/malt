@@ -36,4 +36,5 @@
 
 (provide flatten-2 d-flatten flatten-ρ)
 
-(provide concat-1-1 d-concat concat-ρ)
+(provide concat-1-1 d-concat concat-ρ
+         d-concat-n concat-n-ρ)

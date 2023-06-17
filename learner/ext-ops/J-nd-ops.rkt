@@ -7,7 +7,7 @@
 ;; does not use dualized tensors, so many
 ;; functions here are simply replicas
 ;; of their dualized ones, but they
-;; are maintained separatey because of
+;; are maintained separately because of
 ;; compatibility required with the
 ;; abstract tensor interface
 ;;------------------------------------
@@ -147,9 +147,9 @@
 
 (provide flatten-ρ)
 
-(require (only-in "K-concat.rkt" concat-1-1))
+(require (only-in "K-concat.rkt" concat concat-n))
 
-(define concat-ρ
-  (ext1 concat-1-1 1))
+(define concat-ρ concat)
+(define concat-n-ρ concat-n)
 
-(provide concat-ρ)
+(provide concat-ρ concat-n-ρ)
