@@ -46,6 +46,7 @@ LEARNER_EXT_OPS_SOURCES=\
   $(LEARNER_EXT_OPS_DIR)/H-rectify.rkt\
   $(LEARNER_EXT_OPS_DIR)/I-flatten.rkt\
   $(LEARNER_EXT_OPS_DIR)/J-nd-ops.rkt\
+  $(LEARNER_EXT_OPS_DIR)/K-concat.rkt\
   $(LEARNER_DIR)/ext-ops.rkt
 
 LEARNER_LOADERS=\
@@ -92,6 +93,7 @@ FLAT_EXT_OPS_SOURCES=\
   $(FLAT_EXT_OPS_DIR)/F-max.rkt\
   $(FLAT_EXT_OPS_DIR)/G-correlate.rkt\
   $(FLAT_EXT_OPS_DIR)/I-flatten.rkt\
+  $(FLAT_EXT_OPS_DIR)/K-concat.rkt\
   $(FLAT_DIR)/ext-ops.rkt
 
 FLAT_LOADERS=\
@@ -136,6 +138,7 @@ NESTED_EXT_OPS_SOURCES=\
   $(NESTED_EXT_OPS_DIR)/F-max.rkt\
   $(NESTED_EXT_OPS_DIR)/G-correlate.rkt\
   $(NESTED_EXT_OPS_DIR)/I-flatten.rkt\
+  $(NESTED_EXT_OPS_DIR)/K-concat.rkt\
   $(NESTED_DIR)/ext-ops.rkt
 
 NESTED_LOADERS=\
