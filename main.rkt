@@ -12,6 +12,7 @@
  ;; Tensor basics
  tref tlen list->tensor tensor build-tensor
  scalar? tensor? rank shape reshape trefs
+ concat concat-n
 
  ;; extended operations
  ext1-ρ ext2-ρ ext1-∇ ext2-∇
@@ -39,7 +40,7 @@
  +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
  exp-0 log-0 abs-0 rectify-0 sqrt-0
 
- sum-1 argmax-1 max-1 flatten-2
+ sum-1 argmax-1 max-1 flatten-2 concat-1-1
 
  ;; Comparators
  =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
