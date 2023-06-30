@@ -36,7 +36,7 @@
              (d-sum sum) (d-abs abs) (d*-2-1 *-2-1) (d-argmax argmax)
              (d-max max) (d-sum-cols sum-cols) (d-correlate correlate))
 
- rectify flatten concat
+ rectify flatten concat concat-n
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
  exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
