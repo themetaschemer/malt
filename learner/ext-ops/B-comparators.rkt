@@ -25,7 +25,7 @@
   (comparator >))
 
 (define >=-0-0
-  (comparator >))
+  (comparator >=))
 
 ;;----------------------------
 ;; Tensorized comparators
