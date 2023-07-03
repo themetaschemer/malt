@@ -27,12 +27,6 @@
   (λ (t i)
     (vector-ref t (ρ i))))
 
-(define tensor
-  (λ args
-    (when (null? args)
-      (error 'tensor "Tensors cannot be empty"))
-    (apply vector args)))
-
 (define tlen vector-length)
 
 (define tmap vector-map)
@@ -71,4 +65,4 @@
 (include "test/test-B-tensor-basics.rkt")
 
 (provide tref tlen tmap list->tensor scalar?
-         tensor tensor? build-tensor trefs)
+         tensor? build-tensor trefs)

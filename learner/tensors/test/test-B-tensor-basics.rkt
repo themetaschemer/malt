@@ -1,6 +1,10 @@
 (module+ test
   (require rackunit)
 
+  ;; for testing only.
+  ;; Error checking in tensor is part of test-C-tensor-ops.rkt
+  (define tensor vector)
+
   (define r0-td 3.0)
   (define r1-td (tensor 3.0 4.0 5.0))
   (define r2-td (tensor (tensor 3.0 4.0 5.0) (tensor 7.0 8.0 9.0)))
