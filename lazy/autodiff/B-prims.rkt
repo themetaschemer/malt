@@ -29,8 +29,9 @@
     (let ((ra (ρ da)))
       (dual (ρ-fn ra)
         (λ (d z σ)
+          ;; TODO: need force*-1 here while calling ∇-fn
           (let ((ga (∇-fn ra z)))
-            ((κ da) da ga #;(tp-force ga) σ)))))))
+            ((κ da) da #;ga (tp-force ga) σ)))))))
 
 (define prim2
   (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
@@ -48,8 +49,9 @@
           (rb (ρ db)))
       (dual (ρ-fn ra rb)
         (λ (d z σ)
-          (let-values (((ga gb) (∇-fn ra rb z)))
-            ;; TODO: remove the tp-force here
+          (let-values (((ga gb) (∇-fn ra rb z)
+                                ;; TODO: define a force*-2 for this
+                                #;(force*-2 z (lambda (z) (∇-fn ra rb z)))))
             (let ((σ-hat ((κ da) da (tp-force ga) σ)))
               ((κ db) db (tp-force gb) σ-hat))))))))
 

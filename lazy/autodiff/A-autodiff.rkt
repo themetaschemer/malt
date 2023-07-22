@@ -21,15 +21,13 @@
 (define ρ
   (λ (d)
     (cond
-      ((tensor? d) (tp-force d) d)
-      ((dual? d) (tp-force (vector-ref d 1))
-                 (scalarize (vector-ref d 1)))
+      ((dual? d) (scalarize (vector-ref d 1)))
       (else d))))
 
 (define κ
   (λ (d)
     (cond
-      ((dual? d) (tp-force (vector-ref d 2)))
+      ((dual? d) (vector-ref d 2))
       (else end-of-chain))))
 
 (define scalar?
@@ -75,7 +73,7 @@
   (λ (y wrt)
     (let ((σ (∇σ y (hasheq))))
       (map* (λ (d)
-              (hash-ref σ d 0.0))
+              (tp-force (hash-ref σ d 0.0)))
         wrt))))
 
 (define ∇σ
