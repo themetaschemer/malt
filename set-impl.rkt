@@ -7,7 +7,7 @@
 
 (define set-impl
   (λ (impl)
-    (when (not (member impl '(learner nested-tensors flat-tensors)))
+    (when (not (member impl '(learner nested-tensors flat-tensors lazy)))
       (error "Unknown implementation: ~a~%" impl))
     (setup #:collections (list (list "malt")) #:clean? #t)
     (write-implementation-to-config-file impl)

@@ -8,11 +8,11 @@
   (check-exn exn:fail? (λ () (tensor test-lt 4)))
   (check-exn exn:fail? (λ () (tensor 4 test-lt)))
 
-  (check-equal? (tp-tref test-lt 2) 3)
+  (check-equal? (tp-force (tp-tref test-lt 2)) 3)
   (check-exn exn:fail? (λ () (tp-tref test-lt 5)))
 
   (define test-nested-lt (tensor (tensor 1 2 3) (tensor 4 5 6)))
-  (check-equal? (tp-tref (tp-tref test-nested-lt 0) 2) 3)
+  (check-equal? (tp-force (tp-tref (tp-tref test-nested-lt 0) 2)) 3)
   (check-exn exn:fail? (λ () (tp-tref (tp-tref test-nested-lt 2) 0)) 3)
   (check-exn exn:fail? (λ () (tp-tref test-nested-lt 2)) 3)
   (check-exn exn:fail? (λ () (tensor test-nested-lt test-nested-lt test-lt)))
@@ -29,16 +29,6 @@
   (check-true (bounded-idx*? test-nested-lt-from-list (list 0 1)))
   (check-false (bounded-idx*? test-nested-lt-from-list (list 1 3)))
   (check-false (bounded-idx*? test-nested-lt-from-list (list 1 1 0)))
-
-  (define test-premap-lt (tensor (tensor 1 2 3) (tensor 4 5 6)))
-  (define test-mapped-lt (tp-tmap add1 test-premap-lt))
-  (check-false (flat? (tpromise-tensor test-premap-lt)))
-  (check-true (tcomp? (tpromise-tensor test-mapped-lt)))
-  (check-equal? (flat-store (tp-force test-mapped-lt)) (vector 2 3 4 5 6 7))
-  (check-equal? (flat-shape (tp-force test-mapped-lt)) (flat-shape (tp-force test-premap-lt)))
-  (check-equal? (flat-offset (tp-force test-mapped-lt)) (flat-offset (tp-force test-premap-lt)))
-  (check-true (flat? (tpromise-tensor test-premap-lt)))
-  (check-true (flat? (tpromise-tensor test-mapped-lt)))
 
   (define test-build-shape '(4 3))
   (define test-built-tensor (build-tpromise test-build-shape

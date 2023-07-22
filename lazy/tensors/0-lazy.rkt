@@ -5,10 +5,31 @@
 
 ;; tensor computations
 (struct tcomp ())
+#;
+(: lst (U (Listof tpromise) (Listof Number)))
 (struct tcomp-list->tpromise-list tcomp (lst) #:transparent)
-(struct tcomp-tp-map tcomp (f tp) #:transparent)
+#;
+(: s (Listof Natural)) ;; non-empty
+#;
+(: f (-> (Listof Natural) Number))
 (struct tcomp-build-tpromise tcomp (s f) #:transparent)
-(struct tcomp-tp-trefs tcomp (forced b) #:transparent)
+#;
+(: tp tpromise)
+#;
+(: i Natural)
+(struct tcomp-tp-tref tcomp (tp i) #:transparent)
+#;
+(: tp tpromise)
+#;
+(: i (Listof Natural))
+(struct tcomp-tp-trefs tcomp (tp b) #:transparent)
+;;TODO: Use functional->preallocated-* to use non-mutated/functional types for
+;;the ext base functions
+#;
+(: fᵈ (U (-> Number Number (Values Number Number))
+         (-> (Vector Number) Natural (Listof Natural)
+             (Vector Number) Natural (Listof Natural)
+             (Vector Number) Natural (Listof Natural))))
 (struct tcomp-ext2-∇ tcomp (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
   #:transparent)
 (struct tcomp-ext1-∇-prealloc tcomp (tp zp f m shape-fn) #:transparent)
@@ -20,6 +41,8 @@
 (struct tcomp-ext1-ρ-prealloc tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-ext1-ρ tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-reshape tcomp (s tp) #:transparent)
+#;
+(: args (U (Listof tpromise) (Listof Number)))
 (struct tcomp-tensor tcomp (args) #:transparent)
 
 (struct tpromise ((tensor #:mutable) shape)
@@ -40,13 +63,21 @@
     (values tensor shape))
   #:transparent)
 
+#;
+(: scalar? (-> Any Boolean))
 (define scalar? number?)
 
+#;
+(: tensor (case-> (-> tpromise * tpromise)
+                  (-> Number * tpromise)))
 (define tensor
   (λ args
-    (ensure-shape args)
-    (let ((inner-flat (tensor-inner-flat args))
-           )
+    (unless (ensure-shape args)
+      (error 'tensor
+             "Mismatched shapes: ~a~%"
+             args))
+
+    (let ((inner-flat (tensor-inner-flat args)))
       (cond
         ((flat? inner-flat)
          (tpromise inner-flat (flat-shape inner-flat)))
@@ -55,37 +86,41 @@
                 (outer (length args))
                 (new-shape (cons outer inner-shape)))
            (tpromise inner-flat new-shape)))))))
-
+#;
+(: tensor-inner-flat (-> (U (Listof tpromise) (Listof Number))
+                       (U flat tcomp)))
 (define tensor-inner-flat
   (λ (args)
     (cond
      [(number? (car args)) (apply flat:tensor args)]
      [else (tcomp-tensor args)])))
 
+#;
+(: ensure-shape (-> (U (Listof tpromise) (Listof Number)) Boolean))
 (define ensure-shape
   (λ (args)
-    (unless (and (not (null? args))
-                 (cond
-                   ((number? (car args))
-                    (andmap number? (cdr args)))
-                   ((tpromise? (car args))
-                    (let ((s (tp-shape (car args))))
-                      (andmap (λ (t)
-                                (and (tpromise? t)
-                                     (equal? (tp-shape t) s)))
-                              (cdr args))))
-                   (else #f)))
-      (error 'tensor
-             "Mismatched shapes: ~a~%"
-             args))))
+    (and (not (null? args))
+         (cond
+           ((number? (car args))
+            (andmap number? (cdr args)))
+           ((tpromise? (car args))
+            (let ((s (tp-shape (car args))))
+              (andmap (λ (t)
+                        (and (tpromise? t)
+                             (equal? (tp-shape t) s)))
+                      (cdr args))))
+           (else #f)))))
 
+#;
+(: ensure-flat (-> (U flat Number) flat))
 (define ensure-flat
   (λ (v)
     (cond
       ((scalar? v) (flat '() (vec v) 0))
       (else v))))
 
-;(-> tpromise (U flat scalar))
+#;
+(: tp-force (-> tpromise (U flat Number)))
 (define tp-force
   (lambda (tp (print? #f))
     (when print?
@@ -107,23 +142,20 @@
              res]
         [else tp]))))
 
+#;
+(: tcomp-force (-> tcomp (U flat Number)))
 (define tcomp-force
   (λ (tc)
     (match tc
       [(tcomp-list->tpromise-list lst)
        (flat:list->tensor
         (map (λ (l) (tp-force l #f)) lst))]
-      [(tcomp-tp-map f tp)
-       (let* ([flat-vec (tp-force tp #f)]
-              [store (flat-store flat-vec)]
-              [shape (flat-shape flat-vec)]
-              [offset (flat-offset flat-vec)])
-         (flat shape (vector-map f store)
-               offset))]
       [(tcomp-build-tpromise s f)
        (flat:build-tensor s f)]
-      [(tcomp-tp-trefs forced b)
-       (flat:trefs forced b)]
+      [(tcomp-tp-tref tp i)
+       (flat:tref (tp-force tp) i)]
+      [(tcomp-tp-trefs tp b)
+       (flat:trefs (tp-force tp) b)]
       [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
        (let* ([b (if (zero? i) out0 out1)]
               [v (unbox b)])
@@ -133,7 +165,7 @@
             (unbox b))
            (else v)))]
       [(tcomp-ext1-∇-prealloc tp zp f m shape-fn)
-       (scalarize
+       (tp-scalarize
         (flat-ext1-∇ f m shape-fn
                      (ensure-flat (tp-force tp))
                      (ensure-flat (tp-force zp))))]
@@ -144,11 +176,11 @@
                 (base-shape (min-shape m in-shape))
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-         (scalarize (flat-ext1-∇ flat-f m shape-fn t z))))]
+         (tp-scalarize (flat-ext1-∇ flat-f m shape-fn t z))))]
       [(tcomp-ext2-ρ-scalar f tp-t tp-u)
        (f (tp-force tp-t) (tp-force tp-t))]
       [(tcomp-ext2-ρ-prealloc tp-t tp-u f m n shape-fn)
-       (scalarize
+       (tp-scalarize
           (flat-ext2-ρ f m n shape-fn
                        (ensure-flat (tp-force tp-t))
                        (ensure-flat (tp-force tp-u))))]
@@ -159,19 +191,19 @@
                 (u-shape (min-shape n (flat-shape u)))
                 (out-shape (shape-fn t-shape u-shape))
                 (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape)))
-           (scalarize
+           (tp-scalarize
             (flat-ext2-ρ flat-f m n shape-fn t u))))]
       [(tcomp-ext1-ρ-scalar f tp)
        (f (tp-force tp))]
       [(tcomp-ext1-ρ-prealloc f m shape-fn tp)
-       (scalarize (flat-ext1-ρ f m shape-fn (ensure-flat (tp-force tp))))]
+       (tp-scalarize (flat-ext1-ρ f m shape-fn (ensure-flat (tp-force tp))))]
       [(tcomp-ext1-ρ f m shape-fn tp)
        (let ([t (ensure-flat (tp-force tp #f))])
          (let* ((in-shape (flat-shape t))
                 (base-shape (min-shape m in-shape))
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
-           (scalarize
+           (tp-scalarize
             (flat-ext1-ρ flat-f m shape-fn t))))]
       [(tcomp-reshape s tp)
        (let ([t (tp-force tp #f)])
@@ -179,11 +211,6 @@
       [(tcomp-tensor args)
 
        (merge-flats (map tp-force args))])))
-
-;; TODO: This can also be made lazy
-(define tp-force-ref
-  (λ (tp i)
-    (flat:tref (tp-force tp) i)))
 
 (define bounded-idx*^
   (λ (shape idx*)
@@ -202,12 +229,9 @@
 (define tp-tref
   (lambda (tp i)
     (cond
-      [(and (bounded-idx*? tp (list i))
-            (flat? (tp-force-ref tp i)))
-       (tpromise (tp-force-ref tp i)
-                 (flat-shape (tp-force-ref tp i)))]
       [(bounded-idx*? tp (list i))
-       (tp-force-ref tp i)]
+       (tpromise (tcomp-tp-tref tp i)
+                 (cdr (tpromise-shape tp)))]
       [else (error 'exn:tp-tref
                    (string-append
                     "Index out of bounds. ~a "
@@ -236,13 +260,6 @@
                    . ,(tp-shape
                        (car lst))))])))
 
-(define tp-tmap
-  (λ (f tp)
-    (struct-copy
-     tpromise tp
-     (tensor
-      (tcomp-tp-map f tp)))))
-
 (define build-tpromise
   (λ (s f)
     (tpromise (tcomp-build-tpromise s f) s)))
@@ -257,10 +274,9 @@
        (error 'tp-trefs
               "An index was out of bounds")]
       [else
-       (let ([forced (tp-force tp)])
-         (tpromise (tcomp-tp-trefs forced b)
-                   `(,(length b)
-                     . ,(cdr (flat-shape forced)))))])))
+       (tpromise (tcomp-tp-trefs tp b)
+                 `(,(length b)
+                   . ,(cdr (tpromise-shape tp))))])))
 
 (define tp-ext1-ρ
   (λ (f m [shape-fn scalar-shape])
@@ -322,18 +338,13 @@
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]))))
 
-(define scalarize
-  (λ (t)
-    (cond
-      ((and (flat? t) (null? (flat-shape t)))
-       (vref (flat-store t) 0))
-      (else t))))
-
 (define tp-scalarize
   (λ (tp)
     (cond
       [(and (tpromise? tp) (null? (tpromise-shape tp)))
-       (scalarize (tp-force tp))]
+       (tp-scalarize (tp-force tp))]
+      [(and (flat? tp) (null? (flat-shape tp)))
+       (vref (flat-store tp) 0)]
       [else tp])))
 
 (define scalar-shape
@@ -449,13 +460,11 @@
                    (+ offz iz)
                    stride-z)))
            (set-box! out0
-                     (scalarize (flat s0 g0 0)))
+                     (tp-scalarize (flat s0 g0 0)))
            (set-box! out1
-                     (scalarize (flat s1 g1 0)))))))))
+                     (tp-scalarize (flat s1 g1 0)))))))))
 
-;; TODO: make sure that all functions being stored in tcomp structs should be
-;; prims. Other functions should be inlined into tp-tcomp by passing all
-;; parameters to these functions through the tcomp struct.
+;; TODO: Create a lazy-apply-2 that does this more generally
 (define tp-d-ext2^
   (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
     (let* ((out0 (box 'uncalculated))
@@ -516,7 +525,7 @@
 
 (define tensor?
   (lambda (tp)
-    (or (tpromise? tp) (scalar? tp))))
+    (or (tpromise? tp) (flat? tp) (scalar? tp))))
 
 (include "test/test-0-lazy.rkt")
 
