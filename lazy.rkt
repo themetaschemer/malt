@@ -2,7 +2,7 @@
 
 (require
  (except-in "lazy/tensors.rkt"
-   rank shape reshape trefs tensor? tlen ref refr))
+   rank shape reshape tref trefs tensor? tlen ref refr))
 
 (require "lazy/autodiff.rkt")
 (require "lazy/ext-ops.rkt")

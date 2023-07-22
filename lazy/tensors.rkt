@@ -16,3 +16,5 @@
 ;; These will get overriden by duals
 (provide tensor?)
 (provide rank shape reshape size-of)
+
+(provide force*1 force*2)

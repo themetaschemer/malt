@@ -30,8 +30,11 @@
       (dual (ρ-fn ra)
         (λ (d z σ)
           ;; TODO: need force*-1 here while calling ∇-fn
-          (let ((ga (∇-fn ra z)))
-            ((κ da) da #;ga (tp-force ga) σ)))))))
+          #;(let ((ga (∇-fn ra z)))
+            ((κ da) da #;ga (tp-force ga) σ))
+          (force*1 (∇-fn ra z)
+                   (λ (ga)
+                     ((κ da) da ga σ))))))))
 
 (define prim2
   (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
@@ -49,11 +52,16 @@
           (rb (ρ db)))
       (dual (ρ-fn ra rb)
         (λ (d z σ)
+          #;
           (let-values (((ga gb) (∇-fn ra rb z)
                                 ;; TODO: define a force*-2 for this
                                 #;(force*-2 z (lambda (z) (∇-fn ra rb z)))))
             (let ((σ-hat ((κ da) da (tp-force ga) σ)))
-              ((κ db) db (tp-force gb) σ-hat))))))))
+              ((κ db) db (tp-force gb) σ-hat)))
+          (force*2 (λ () (∇-fn ra rb z))
+                   (λ (ga gb)
+                     (let ((σ-hat ((κ da) da ga σ)))
+                       ((κ db) db gb σ-hat)))))))))
 
 ;;----------------------------
 ;; Dualized tensor op creators

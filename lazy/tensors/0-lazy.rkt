@@ -24,7 +24,7 @@
 (: i (Listof Natural))
 (struct tcomp-tp-trefs tcomp (tp b) #:transparent)
 ;;TODO: Use functional->preallocated-* to use non-mutated/functional types for
-;;the ext base functions
+;;      the ext base functions
 #;
 (: fᵈ (U (-> Number Number (Values Number Number))
          (-> (Vector Number) Natural (Listof Natural)
@@ -527,6 +527,15 @@
   (lambda (tp)
     (or (tpromise? tp) (flat? tp) (scalar? tp))))
 
+(define force*1
+  (λ (t f)
+    (f (tp-force t))))
+
+(define force*2
+  (λ (ts f)
+    (let-values (((t1 t2) (ts)))
+      (f (tp-force t1) (tp-force t2)))))
+
 (include "test/test-0-lazy.rkt")
 
 (provide start-vector-manager vector-manager-report)
@@ -559,3 +568,5 @@
           (tp-shape shape)
           (tp-reshape reshape)
           (flat:size-of size-of)))
+
+(provide force*1 force*2)
