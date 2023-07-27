@@ -28,7 +28,7 @@
      (else
       (flat (cdr (flat-shape t))
             (flat-store t)
-            (+ (flat-offset t) (* i (car (flat-strides t)))))))
+            (+ (flat-offset t) (* i (car (flat-strides t)))))))))
 
 (define tlen
   (λ (t)
