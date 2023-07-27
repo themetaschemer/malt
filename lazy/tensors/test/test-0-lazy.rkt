@@ -13,8 +13,8 @@
 
   (define test-nested-lt (tensor (tensor 1 2 3) (tensor 4 5 6)))
   (check-equal? (tp-force (tp-tref (tp-tref test-nested-lt 0) 2)) 3)
-  (check-exn exn:fail? (λ () (tp-tref (tp-tref test-nested-lt 2) 0)) 3)
-  (check-exn exn:fail? (λ () (tp-tref test-nested-lt 2)) 3)
+  (check-exn exn:fail? (λ () (tp-tref (tp-tref test-nested-lt 2) 0)))
+  (check-exn exn:fail? (λ () (tp-tref test-nested-lt 2)))
   (check-exn exn:fail? (λ () (tensor test-nested-lt test-nested-lt test-lt)))
 
   (check-equal? (tp-tlen test-lt) 3)
@@ -46,7 +46,7 @@
   (check-true (tcomp? (tpromise-tensor test-tp-trefs)))
   (check-equal? (tpromise-shape test-tp-trefs) (flat-shape (tp-force test-tp-trefs)))
   (check-equal? (flat-store (tp-force test-tp-trefs)) (vector 0 1 2 6 7 8))
-  (check-exn exn:fail? (λ () (tp-trefs test-nested-lt '(0 4))) 3)
+  (check-exn exn:fail? (λ () (tp-trefs test-nested-lt '(0 4))))
 
   (define sum-f
     (λ (in-v iᵢ sᵢ out-v iₒ sₒ)
