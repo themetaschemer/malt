@@ -11,7 +11,7 @@
 
 (provide ext1-ρ ext2-ρ ext1-∇ ext2-∇)
 
-(provide tp-force scalarize)
+(provide force/eval scalarize)
 
 ;; These will get overriden by duals
 (provide tensor?)

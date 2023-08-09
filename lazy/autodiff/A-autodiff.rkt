@@ -73,7 +73,7 @@
   (λ (y wrt)
     (let ((σ (∇σ y (hasheq))))
       (map* (λ (d)
-              (tp-force (hash-ref σ d 0.0)))
+              (force/eval (hash-ref σ d 0.0)))
         wrt))))
 
 (define ∇σ

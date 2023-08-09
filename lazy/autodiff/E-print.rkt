@@ -11,7 +11,7 @@
     (cond
       ((dual? y) (make-printable (ρ y)))
       ((tpromise? y)
-       (make-printable (tp-force y) max-length))
+       (make-printable (force/eval y) max-length))
       ((flat? y) (make-printable-flat y max-length))
       ((list? y)
        (map (λ (le) (make-printable le max-length)) y))
