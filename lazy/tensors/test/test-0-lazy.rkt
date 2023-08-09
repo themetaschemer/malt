@@ -3,16 +3,16 @@
 
   (define test-lt (tensor 1 2 3))
   (check-true (flat? (tpromise-tensor test-lt)))
-  (check-equal? (flat-store (tp-force test-lt)) (vector 1 2 3))
+  (check-equal? (flat-store (force/eval test-lt)) (vector 1 2 3))
   (check-true (flat? (tpromise-tensor test-lt)))
   (check-exn exn:fail? (λ () (tensor test-lt 4)))
   (check-exn exn:fail? (λ () (tensor 4 test-lt)))
 
-  (check-equal? (tp-force (tp-tref test-lt 2)) 3)
+  (check-equal? (force/eval (tp-tref test-lt 2)) 3)
   (check-exn exn:fail? (λ () (tp-tref test-lt 5)))
 
   (define test-nested-lt (tensor (tensor 1 2 3) (tensor 4 5 6)))
-  (check-equal? (tp-force (tp-tref (tp-tref test-nested-lt 0) 2)) 3)
+  (check-equal? (force/eval (tp-tref (tp-tref test-nested-lt 0) 2)) 3)
   (check-exn exn:fail? (λ () (tp-tref (tp-tref test-nested-lt 2) 0)))
   (check-exn exn:fail? (λ () (tp-tref test-nested-lt 2)))
   (check-exn exn:fail? (λ () (tensor test-nested-lt test-nested-lt test-lt)))
@@ -21,7 +21,7 @@
   (check-equal? (tp-tlen test-nested-lt) 2)
 
   (define test-lt-from-list (list->tpromise '(5 6 7 8)))
-  (check-equal? (flat-store (tp-force test-lt-from-list)) (vector 5 6 7 8))
+  (check-equal? (flat-store (force/eval test-lt-from-list)) (vector 5 6 7 8))
   (define test-nested-lt-from-list
     (list->tpromise `(,test-lt ,test-lt ,test-lt)))
   (check-equal? (tpromise-shape test-nested-lt-from-list) '(3 3))
@@ -44,8 +44,8 @@
   (define test-refs '(0 2))
   (define test-tp-trefs (tp-trefs test-built-tensor test-refs))
   (check-true (tcomp? (tpromise-tensor test-tp-trefs)))
-  (check-equal? (tpromise-shape test-tp-trefs) (flat-shape (tp-force test-tp-trefs)))
-  (check-equal? (flat-store (tp-force test-tp-trefs)) (vector 0 1 2 6 7 8))
+  (check-equal? (tpromise-shape test-tp-trefs) (flat-shape (force/eval test-tp-trefs)))
+  (check-equal? (flat-store (force/eval test-tp-trefs)) (vector 0 1 2 6 7 8))
   (check-exn exn:fail? (λ () (tp-trefs test-nested-lt '(0 4))))
 
   (define sum-f
@@ -55,11 +55,11 @@
                (+ sum (vref in-v i))))))
 
   (define sum (tp-ext1-ρ sum-f 1))
-  (check-equal? (flat-store (tp-force (sum test-nested-lt))) (vec 6.0 15.0))
+  (check-equal? (flat-store (force/eval (sum test-nested-lt))) (vec 6.0 15.0))
 
   (define id-f (lambda (v) v))
   (define id-ρ (tp-ext1-ρ id-f 1 (λ (s) s)))
-  (check-equal? (flat-store (tp-force (id-ρ test-nested-lt))) (vec 1 2 3 4 5 6))
+  (check-equal? (flat-store (force/eval (id-ρ test-nested-lt))) (vec 1 2 3 4 5 6))
 
   (define t0
     (build-tpromise '(2 3 4)
@@ -69,7 +69,7 @@
   (define *-ρ (tp-ext2-ρ * 0 0))
   (define t0sqr (*-ρ t0 t0))
 
-  (flat:check-tensor-equal? (tp-force t0sqr)
+  (flat:check-tensor-equal? (force/eval t0sqr)
                             (flat:reshape
                              '(2 3 4)
                              (flat:tensor
@@ -104,7 +104,7 @@
     (*-2-1 t1 t2))
 
   (check-equal? (tpromise-shape r-1-2) '(5 6))
-  (flat:check-tensor-equal? (tp-force r-1-2)
+  (flat:check-tensor-equal? (force/eval r-1-2)
                             (flat:reshape
                              '(5 6)
                              (flat:tensor
@@ -130,7 +130,7 @@
     (*-2-1 t3 t4))
 
   (check-equal? (tpromise-shape r-3-4) '(3 5 6))
-  (flat:check-tensor-equal? (tp-force r-3-4)
+  (flat:check-tensor-equal? (force/eval r-3-4)
    (flat:reshape
     '(3 5 6)
     (flat:tensor
@@ -168,11 +168,11 @@
     (λ (t)
       (build-tpromise (tpromise-shape t) (λ (_) 1.0))))
 
-  (flat:check-tensor-equal? (tp-force (d-sqr r1-td (one-like r1-td)))
+  (flat:check-tensor-equal? (force/eval (d-sqr r1-td (one-like r1-td)))
                             (flat:tensor 6.0 8.0 10.0))
 
   (let ((gsqr (d-sqr r2-td (one-like r2-td))))
-    (flat:check-tensor-equal? (tp-force gsqr)
+    (flat:check-tensor-equal? (force/eval gsqr)
                               (flat:reshape
                                '(2 3)
                                (flat:tensor 6.0 8.0 10.0 14.0 16.0 18.0))))
@@ -180,15 +180,15 @@
   (define d+ (tp-ext2-∇ +ᵈ 0 0 scalar-shape))
 
   (let-values (((da db) (d+ r1-td r1-td (one-like r1-td))))
-    (flat:check-tensor-equal? (tp-force da)
+    (flat:check-tensor-equal? (force/eval da)
                               (flat:tensor 1.0 1.0 1.0))
-    (flat:check-tensor-equal? (tp-force db)
+    (flat:check-tensor-equal? (force/eval db)
                               (flat:tensor 1.0 1.0 1.0)))
 
   (let-values (((da db) (d+ r1-td r2-td (one-like r2-td))))
-    (flat:check-tensor-equal? (tp-force da)
+    (flat:check-tensor-equal? (force/eval da)
                               (flat:tensor 2.0 2.0 2.0))
-    (flat:check-tensor-equal? (tp-force db)
+    (flat:check-tensor-equal? (force/eval db)
                               (flat:reshape
                                '(2 3)
                                (flat:tensor 1.0 1.0 1.0 1.0 1.0 1.0))))
@@ -200,8 +200,8 @@
   (let-values (((gt gu) (*∇ (tensor 2.0 3.0 4.0)
                             (tensor 1.0 2.0 3.0)
                             (tensor 1.0 1.0 1.0))))
-    (flat:check-tensor-equal? (tp-force gt) (tp-force (tensor 1.0 2.0 3.0)))
-    (flat:check-tensor-equal? (tp-force gu) (tp-force (tensor 2.0 3.0 4.0))))
+    (flat:check-tensor-equal? (force/eval gt) (force/eval (tensor 1.0 2.0 3.0)))
+    (flat:check-tensor-equal? (force/eval gu) (force/eval (tensor 2.0 3.0 4.0))))
 
   (define sum-1-∇
     (λ (g t it st vz iz sz)
@@ -212,10 +212,10 @@
 
   (let ((gt (sum-∇ (tensor 2.0 3.0 4.0)
                    1.0)))
-    (flat:check-tensor-equal? (tp-force gt) (tp-force (tensor 1.0 1.0 1.0))))
+    (flat:check-tensor-equal? (force/eval gt) (force/eval (tensor 1.0 1.0 1.0))))
 
   (let ((gt (sum-∇ (tensor (tensor 2.0 3.0 4.0)
                            (tensor 2.0 3.0 4.0))
                    (tensor 2.0 1.0))))
-    (flat:check-tensor-equal? (tp-force gt) (tp-force (tensor (tensor 2.0 2.0 2.0)
+    (flat:check-tensor-equal? (force/eval gt) (force/eval (tensor (tensor 2.0 2.0 2.0)
                                                               (tensor 1.0 1.0 1.0))))))

@@ -5,7 +5,7 @@
 
 (define tp-tensor-equal?
   (λ (tp-actual tp-expected)
-    (flat:tensor-equal? (tp-force tp-actual) (tp-force tp-expected))))
+    (flat:tensor-equal? (force/eval tp-actual) (force/eval tp-expected))))
 
 (require rackunit)
 (define-binary-check (tp-check-tensor-equal? tp-tensor-equal? actual expected))

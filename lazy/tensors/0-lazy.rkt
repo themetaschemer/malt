@@ -117,123 +117,103 @@
       ((scalar? v) (flat '() (vec v) 0))
       (else v))))
 
-#;
-(: tp-force (-> tpromise (U flat Number)))
-#;
+(define-namespace-anchor a)
+
+(define run-instrs
+  (lambda (instrs)
+    (let ([env (namespace-anchor->namespace a)])
+      (eval instrs env))))
+
 (define force/eval
-  (lambda (delayed-expr/env)
-    (let-values (((instructions env)
-                  (compile-delayed-expr delayed-expr/env))))
-      (run-instructions instructions env)))
-
-;; run-instructions and compile-delayed-expr
-;; Phase 1 : instructions are scheme and run-instructions is basically eval
-;;     -- determine the separation between the compiler and run-time-system.
-;;     -- 1 week
-;; Phase 2 : instructions are C and run-instructions is FFI + C.
-;;     -- write the runtime-system in C
-;;     -- 3 weeks
-;; Phase 3 : instructions are OpenCL and run-instructions is FFI+ C
-;;     -- write the runtime-system in openCL.
-;;     -- 3 weeks
-;;     -- Distribution across machines --> Ph. D. Thesis.
-;; Phase 4 : instructions are SPIR-V and run-instructions is a SPIR-V driver.
-;;     -- write the runtime-system in openCL with a SPIR-V target (?)
-;;     -- 6 weeks
-;; Phase 5 : instructions are custom, and runtime system is on FPGA.
-;;     -- build VHDL blocks for custom instructions.
-;;     -- Ph. D. Thesis.
-
-(define tp-force
   (lambda (tp (print? #f))
     (when print?
       (printf "~n####PP tensor: ")
       (pretty-print tp))
-    (let ([res
-           (match tp
-             [(tpromise t-tcomp _)
-              #:when (tcomp? t-tcomp)
-              (tcomp-force t-tcomp)]
-             [(tpromise t _)
-              #:when (or (flat? t) (scalar? t)) t]
-
-           ;; NOTE: This case runs when we use tp-scalarize to turn
-           ;; the tensor to a scalar
-             [_ #f])])
-      (cond
-        [res (set-tpromise-tensor! tp res)
-             res]
-        [else tp]))))
+    (match tp
+      [(tpromise t-tcomp _)
+       #:when (tcomp? t-tcomp)
+       (let* ((instrs (compile-expr t-tcomp '()))
+              (res (run-instrs instrs)))
+         (set-tpromise-tensor! tp res)
+         res)]
+      [(tpromise t _)
+       #:when (or (flat? t) (scalar? t)) t]
+      ;; NOTE: This case runs when we use tp-scalarize to turn
+      ;; the tensor to a scalar
+      (else tp))))
 
 #;
 (: tcomp-force (-> tcomp (U flat Number)))
-(define tcomp-force
-  (λ (tc)
+(define compile-expr
+  (λ (tc t-env)
     (match tc
       [(tcomp-list->tensor lst)
-       (flat:list->tensor
-        (map (λ (l) (tp-force l #f)) lst))]
+       `(flat:list->tensor
+         (map (λ (l) (force/eval l #f)) ',lst))]
       [(tcomp-build-tensor s f)
-       (flat:build-tensor s f)]
+       `(flat:build-tensor ',s ,f)]
       [(tcomp-tref tp i)
-       (flat:tref (tp-force tp) i)]
+       `(flat:tref (force/eval ,tp) ,i)]
       [(tcomp-trefs tp b)
-       (flat:trefs (tp-force tp) b)]
+       `(flat:trefs (force/eval ,tp) ',b)]
       [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
-       (let* ([b (if (zero? i) out0 out1)]
-              [v (unbox b)])
-         (cond
-           ((eqv? v 'uncalculated)
-            (ext2-∇-forcer fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1)
-            (unbox b))
-           (else v)))]
+       `(let* ([b (if (zero? ,i) ,out0 ,out1)]
+               [v (ext2-∇-result-res b)])
+          (cond
+            ((eqv? v 'uncalculated)
+             (ext2-∇-forcer ,fᵈ ,r0 ,r1 ,shape-fn
+                            (force/eval ,tp-t0)
+                            (force/eval ,tp-t1)
+                            (force/eval ,tp-z)
+                            ,out0 ,out1)
+             (ext2-∇-result-res b))
+            (else v)))]
       [(tcomp-ext1-∇-prealloc tp zp f m shape-fn)
-       (tp-scalarize
-        (flat-ext1-∇ f m shape-fn
-                     (ensure-flat (tp-force tp))
-                     (ensure-flat (tp-force zp))))]
+       `(scalarize
+         (flat-ext1-∇ ,f ,m ,shape-fn
+                      (ensure-flat (force/eval ,tp))
+                      (ensure-flat (force/eval ,zp))))]
       [(tcomp-ext1-∇ tp zp f m shape-fn)
-       (let ([t (ensure-flat (tp-force tp #f))]
-             [z (ensure-flat (tp-force zp #f))])
-         (let* ((in-shape (flat-shape t))
-                (base-shape (min-shape m in-shape))
-                (out-shape (shape-fn base-shape))
-                (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-         (tp-scalarize (flat-ext1-∇ flat-f m shape-fn t z))))]
+       `(let ([t (ensure-flat (force/eval ,tp #f))]
+              [z (ensure-flat (force/eval ,zp #f))])
+          (let* ((in-shape (flat-shape t))
+                 (base-shape (min-shape ,m in-shape))
+                 (out-shape (,shape-fn base-shape))
+                 (flat-f (functional->preallocated-1-∇ ,f base-shape out-shape)))
+            (scalarize (flat-ext1-∇ flat-f ,m ,shape-fn t z))))]
       [(tcomp-ext2-ρ-scalar f tp-t tp-u)
-       (f (tp-force tp-t) (tp-force tp-u))]
+       `(,f (force/eval ,tp-t) (force/eval ,tp-u))]
       [(tcomp-ext2-ρ-prealloc tp-t tp-u f m n shape-fn)
-       (tp-scalarize
-          (flat-ext2-ρ f m n shape-fn
-                       (ensure-flat (tp-force tp-t))
-                       (ensure-flat (tp-force tp-u))))]
+       `(scalarize
+         (flat-ext2-ρ ,f ,m ,n ,shape-fn
+                      (ensure-flat (force/eval ,tp-t))
+                      (ensure-flat (force/eval ,tp-u))))]
       [(tcomp-ext2-ρ tp-t tp-u f m n shape-fn)
-       (let ([t (ensure-flat (tp-force tp-t #f))]
-             [u (ensure-flat (tp-force tp-u #f))])
-         (let* ((t-shape (min-shape m (flat-shape t)))
-                (u-shape (min-shape n (flat-shape u)))
-                (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape)))
-           (tp-scalarize
-            (flat-ext2-ρ flat-f m n shape-fn t u))))]
+       `(let ([t (ensure-flat (force/eval ,tp-t #f))]
+              [u (ensure-flat (force/eval ,tp-u #f))])
+          (let* ((t-shape (min-shape ,m (flat-shape t)))
+                 (u-shape (min-shape ,n (flat-shape u)))
+                 (out-shape (,shape-fn t-shape u-shape))
+                 (flat-f (functional->preallocated-2-ρ ,f t-shape u-shape out-shape)))
+            (scalarize
+             (flat-ext2-ρ flat-f ,m ,n ,shape-fn t u))))]
       [(tcomp-ext1-ρ-scalar f tp)
-       (f (tp-force tp))]
+       `(,f (force/eval ,tp))]
       [(tcomp-ext1-ρ-prealloc f m shape-fn tp)
-       (tp-scalarize (flat-ext1-ρ f m shape-fn (ensure-flat (tp-force tp))))]
+       `(scalarize (flat-ext1-ρ ,f ,m ,shape-fn (ensure-flat (force/eval ,tp))))]
       [(tcomp-ext1-ρ f m shape-fn tp)
-       (let ([t (ensure-flat (tp-force tp #f))])
-         (let* ((in-shape (flat-shape t))
-                (base-shape (min-shape m in-shape))
-                (out-shape (shape-fn base-shape))
-                (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
-           (tp-scalarize
-            (flat-ext1-ρ flat-f m shape-fn t))))]
+       `(let ([t (ensure-flat (force/eval ,tp #f))])
+          (let* ((in-shape (flat-shape t))
+                 (base-shape (min-shape ,m in-shape))
+                 (out-shape (,shape-fn base-shape))
+                 (flat-f (functional->preallocated-1-ρ ,f base-shape out-shape)))
+            (scalarize
+             (flat-ext1-ρ flat-f ,m ,shape-fn t))))]
       [(tcomp-reshape s tp)
-       (let ([t (tp-force tp #f)])
-         (flat s (flat-store t) (flat-offset t)))]
+       `(let ([t (force/eval ,tp #f)])
+          (flat ',s (flat-store t) (flat-offset t)))]
       [(tcomp-tensor args)
-
-       (merge-flats (map tp-force args))])))
+       `(merge-flats (map force/eval ',args))])))
 
 (define bounded-idx*^
   (λ (shape idx*)
@@ -361,11 +341,13 @@
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]))))
 
+;; We may have to replace tp-scalarize with scalarize from flat-tensors, because
+;; the force/eval used  in its definition is undesirable.
 (define tp-scalarize
   (λ (tp)
     (cond
       [(and (tpromise? tp) (null? (tpromise-shape tp)))
-       (tp-scalarize (tp-force tp))]
+       (tp-scalarize (force/eval tp))]
       [(and (flat? tp) (null? (flat-shape tp)))
        (vref (flat-store tp) 0)]
       [else tp])))
@@ -433,21 +415,21 @@
                         (ensure-tpromise tp-z)))])))))
 
 (define ext2-∇-forcer
-  (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1)
-    (let* ((s0 (tp-shape tp-t0))
+  (λ (fᵈ r0 r1 shape-fn t0 t1 z out0 out1)
+    (let* ((f0 (ensure-flat t0))
+           (f1 (ensure-flat t1))
+           (fz (ensure-flat z))
+
+           (s0 (flat-shape f0))
            (sf0 (min-shape r0 s0))
            (stride0 (flat:size-of sf0))
 
-           (s1 (tp-shape tp-t1))
+           (s1 (flat-shape t1))
            (sf1 (min-shape r1 s1))
            (stride1 (flat:size-of sf1))
 
            (sf-z (shape-fn sf0 sf1))
            (stride-z (flat:size-of sf-z))
-
-           (f0 (ensure-flat (tp-force tp-t0)))
-           (f1 (ensure-flat (tp-force tp-t1)))
-           (fz (ensure-flat (tp-force tp-z)))
 
            (v0 (flat-store f0))
            (v1 (flat-store f1))
@@ -482,15 +464,16 @@
                    vz
                    (+ offz iz)
                    stride-z)))
-           (set-box! out0
+           (set-ext2-∇-result-res! out0
                      (tp-scalarize (flat s0 g0 0)))
-           (set-box! out1
+           (set-ext2-∇-result-res! out1
                      (tp-scalarize (flat s1 g1 0)))))))))
 
+(struct ext2-∇-result (res) #:mutable #:transparent)
 (define tp-d-ext2^
   (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
-    (let* ((out0 (box 'uncalculated))
-           (out1 (box 'uncalculated)))
+    (let* ((out0 (ext2-∇-result 'uncalculated))
+           (out1 (ext2-∇-result 'uncalculated)))
       (values
        (tpromise (tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 0)
                  (tp-shape tp-t0))
@@ -551,12 +534,12 @@
 
 (define force*1
   (λ (t f)
-    (f (tp-force t))))
+    (f (force/eval t))))
 
 (define force*2
   (λ (ts f)
     (let-values (((t1 t2) (ts)))
-      (f (tp-force t1) (tp-force t2)))))
+      (f (force/eval t1) (force/eval t2)))))
 
 (include "test/test-0-lazy.rkt")
 
@@ -567,7 +550,7 @@
           (flat:ref ref)
           (flat:refr refr)))
 (provide tensor
-         tp-force
+         force/eval
          tpromise?
          (rename-out
           (tp-scalarize scalarize)
