@@ -1,10 +1,50 @@
 #lang racket
 (require "../../flat-tensors/ext-impl.rkt")
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
+#|
+Questions:
 
+* How do I create a preallocated function example for ext2-∇? Also, how do the preallocated functions work?
+A. Here are what the formal parameters of a binary preallocated ∇-function mean:
+
+    - g0, g1: These are the empty gradient tensor stores which need to be filled
+with the gradients of the corresponding ρ-function w.r.t. the first and second
+arguments respectively.
+
+    - t, it, st: the store, beginning offset and total size of the flat
+representation of the first tensor argument respectively which we will need to loop through
+the scalar elements.
+
+    - u, iu, su: the store, beginning offset and total size of the flat
+representation of the second tensor argument respectively which we will need to
+loop through the scalar elements.
+
+    - z, iz, sz: the store, beginning offset and total size of the flat
+representation of the accumulator respectively which we will need to
+loop through the scalar elements.
+
+   Here are the invariants of the formal parameters:
+
+    - The flat tensors corresponding to the stores g0 and g1 have the same shape
+as the first and second input tensors respectively
+
+    - The flat tensor corresponding to the store z has the same shape as the
+result of invoking the corresponding ρ-function with the two tensor arguments
+
+* Here are a few problems which need to be addressed while checking compiler
+invariants after compiling the expression "(((l2-loss plane) r2d1 (tensor 1.0
+1.0)) plane-theta-0)" from the test-C-loss.rkt file:
+
+    - The env contains flat tensors with the shape '() i.e. they scalars in
+disguise
+
+    - Somehow copies of a flat tensor are being added to the env rather than the
+instructions refering to the same gensym variable
+
+|#
 
 ;; tensor computations
-(struct tcomp ())
+(struct tcomp () #:transparent)
 #;
 (: lst (U (Listof tpromise) (Listof Number)))
 (struct tcomp-list->tensor tcomp (lst) #:transparent)
@@ -30,18 +70,12 @@
              (Vector Number) Natural (Listof Natural))))
 (struct tcomp-ext2-∇ tcomp (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
   #:transparent)
-(struct tcomp-ext1-∇-prealloc tcomp (tp zp f m shape-fn) #:transparent)
 (struct tcomp-ext1-∇ tcomp (tp zp f m shape-fn) #:transparent)
 (struct tcomp-ext2-ρ-scalar tcomp (f tp-t tp-u) #:transparent)
-(struct tcomp-ext2-ρ-prealloc tcomp (tp-t tp-u f m n shape-fn) #:transparent)
 (struct tcomp-ext2-ρ tcomp (tp-t tp-u f m n shape-fn) #:transparent)
 (struct tcomp-ext1-ρ-scalar tcomp (f tp) #:transparent)
-(struct tcomp-ext1-ρ-prealloc tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-ext1-ρ tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-reshape tcomp (s tp) #:transparent)
-#;
-(: args (U (Listof tpromise) (Listof Number)))
-(struct tcomp-tensor tcomp (args) #:transparent)
 
 (struct tpromise ((tensor #:mutable) shape)
   #:guard
@@ -133,10 +167,22 @@
 
 (define-namespace-anchor a)
 
+(define make-instrs
+  (λ (instrs locals env)
+    (let* ([local-binds (for/fold ((binds '()))
+                                  ((l/instrs locals))
+                          `((,(car l/instrs) ,(cdr l/instrs)) . ,binds))]
+           [env-binds (for/fold ((binds '()))
+                                ((t/instrs env))
+                        `((,(car t/instrs) ,(cdr t/instrs)) . ,binds))])
+      `(let* ,env-binds
+         (let* ,local-binds
+           ,instrs)))))
+
 (define run-instrs
-  (lambda (instrs)
-    (let ([env (namespace-anchor->namespace a)])
-      (eval instrs env))))
+  (lambda (instrs locals env)
+    (let ([static-env (namespace-anchor->namespace a)])
+      (eval (make-instrs instrs locals env) static-env))))
 
 (define force/eval
   (lambda (tp (print? #f))
@@ -460,17 +506,6 @@
       [(tpromise? v) (tpromise-shape v)]
       [else (flat:shape v)])))
 
-(define list->tpromise
-  (λ (lst)
-    (cond
-      [(null? lst)
-       (error 'list->ltensor "No elements found")]
-      [else
-       (tpromise (tcomp-list->tensor lst)
-                 `(,(length lst)
-                   . ,(tp-shape
-                       (car lst))))])))
-
 (define build-tpromise
   (λ (s f)
     (tpromise (tcomp-build-tensor s f) s)))
@@ -501,20 +536,24 @@
           '())]
         [(flat:expects-preallocated? f)
          (tpromise
-          (tcomp-ext1-ρ-prealloc f m shape-fn tp)
+          (tcomp-ext1-ρ f m shape-fn tp)
           (merge-shapes
            (tp-shape tp)
            m
            (shape-fn
             (min-shape m (tp-shape tp)))))]
         [else
-         (tpromise
-          (tcomp-ext1-ρ f m shape-fn tp)
-          (merge-shapes
-           (tp-shape tp)
-           m
-           (shape-fn
-            (min-shape m (tp-shape tp)))))]))))
+         (let* ((in-shape (tpromise-shape tp))
+                (base-shape (min-shape m in-shape))
+                (out-shape (shape-fn base-shape))
+                (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
+           (tpromise
+            (tcomp-ext1-ρ flat-f m shape-fn tp)
+            (merge-shapes
+             (tp-shape tp)
+             m
+             (shape-fn
+              (min-shape m (tp-shape tp))))))]))))
 
 (define tp-ext2-ρ
   (λ (f m n [shape-fn scalar-shape])
@@ -573,31 +612,6 @@
 (define scalar-shape
   (λ (s0 [s1 '()]) '()))
 
-(define left-shape
-  (λ (s0 s1) s0))
-
-(define right-shape
-  (λ (s0 s1) s1))
-
-(define flat-function-maker2
-  (λ (f m n)
-    (cond
-      ((and (zero? m) (zero? n))
-       (λ (v0 i0 stride0 v1 i1 stride1
-              v-out i-out stride-out)
-         (vset! v-out i-out
-                (f (vref v0 i0) (vref v1 i1)))))
-      (else
-       f))))
-
-(define flat-function-maker1
-  (λ (f m)
-    (cond
-      ((zero? m)
-       (λ (v0 i0 stride0 v-out i-out stride-out)
-         (vset! v-out i-out (f (vref v0 i0)))))
-      (else f))))
-
 (define tp-ext1-∇
   (λ (f m [shape-fn scalar-shape])
     (λ (tp zp)
@@ -605,12 +619,16 @@
         ((number? tp) (f tp zp))
         ((flat:expects-preallocated? f)
          (tpromise
-          (tcomp-ext1-∇-prealloc tp zp f m shape-fn)
+          (tcomp-ext1-∇ tp (ensure-tpromise zp) f m shape-fn)
           (tp-shape tp)))
         (else
-         (tpromise
-          (tcomp-ext1-∇ tp zp f m shape-fn)
-          (tp-shape tp)))))))
+         (let* ((in-shape (tpromise-shape tp))
+                (base-shape (min-shape m in-shape))
+                (out-shape (shape-fn base-shape))
+                (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
+           (tpromise
+            (tcomp-ext1-∇ tp (ensure-tpromise zp) flat-f m shape-fn)
+            (tp-shape tp))))))))
 
 (define tp-ext2-∇
   (λ (f m n [shape-fn scalar-shape])
@@ -749,7 +767,8 @@
     (let-values (((t1 t2) (ts)))
       (f (force/eval t1) (force/eval t2)))))
 
-(include "test/test-0-lazy.rkt")
+;; TODO: uncomment
+;(include "test/test-0-lazy.rkt")
 
 (provide start-vector-manager vector-manager-report)
 
@@ -783,3 +802,6 @@
           (flat:size-of size-of)))
 
 (provide force*1 force*2)
+
+;; TODO: delete later. For debugging only
+(provide print-compiler? compile-expr make-instrs run-instrs force/eval tpromise-tensor run-compiler count-references get-compiled)
