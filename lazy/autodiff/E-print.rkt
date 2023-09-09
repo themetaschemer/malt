@@ -2,7 +2,7 @@
 
 (require "A-autodiff.rkt")
 (require "../tensors/0-lazy.rkt")
-(require "../../flat-tensors/ext-impl.rkt")
+(require (except-in "../../flat-tensors/ext-impl.rkt" scalarize))
 
 (define max-tensor-print-length (make-parameter 5))
 
