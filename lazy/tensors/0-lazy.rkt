@@ -70,44 +70,58 @@
                   (-> Number * tpromise)))
 (define tensor
   (λ args
-    (unless (ensure-shape args)
-      (error 'tensor
-             "Mismatched shapes: ~a~%"
-             args))
+    (list->tpromise args)))
+#;
+(: tensor-inner-flat (-> (Listof (U tpromise Number))
+                       (U flat tcomp-list->tensor)))
+(define tensor-inner-flat
+  (λ (lst)
+    (cond
+     [(andmap number? lst) (apply flat:tensor lst)]
+     [else (tcomp-list->tensor lst)])))
 
-    (let ((inner-flat (tensor-inner-flat args)))
+#;
+(: ensure-shape (-> (U (Listof tpromise) (Listof Number)) Void))
+(define ensure-shape
+  (λ (args)
+    (when (null? args)
+      (error 'tensor "Tensors cannot be empty"))
+    (let ((checked-shape
+           (λ (x) (if (tpromise? x)
+                      (tpromise-shape x)
+                      '())))
+          (scalar-like?
+           (λ (x)
+             (or (number? x)
+                 (and (tpromise? x)
+                      (null? (tpromise-shape x)))))))
+      (unless (and (not (null? args))
+                   (cond
+                     ((scalar-like? (car args))
+                      (andmap scalar-like? (cdr args)))
+                     ((tpromise? (car args))
+                      (let ((s (checked-shape (car args))))
+                        (andmap (λ (t)
+                                  (and (tpromise? t)
+                                       (equal? (checked-shape t) s)))
+                                (cdr args))))
+                     (else #f)))
+        (error 'tensor
+               "Cannot construct a tensor out of these elements: ~a~%"
+               args)))))
+
+(define list->tpromise
+  (λ (lst)
+    (ensure-shape lst)
+    (let ((inner-flat (tensor-inner-flat lst)))
       (cond
         ((flat? inner-flat)
          (tpromise inner-flat (flat-shape inner-flat)))
         (else
-         (let* ((inner-shape (tpromise-shape (car args)))
-                (outer (length args))
+         (let* ((inner-shape (tp-shape (car lst)))
+                (outer (length lst))
                 (new-shape (cons outer inner-shape)))
            (tpromise inner-flat new-shape)))))))
-#;
-(: tensor-inner-flat (-> (U (Listof tpromise) (Listof Number))
-                       (U flat tcomp)))
-(define tensor-inner-flat
-  (λ (args)
-    (cond
-     [(number? (car args)) (apply flat:tensor args)]
-     [else (tcomp-tensor args)])))
-
-#;
-(: ensure-shape (-> (U (Listof tpromise) (Listof Number)) Boolean))
-(define ensure-shape
-  (λ (args)
-    (and (not (null? args))
-         (cond
-           ((number? (car args))
-            (andmap number? (cdr args)))
-           ((tpromise? (car args))
-            (let ((s (tp-shape (car args))))
-              (andmap (λ (t)
-                        (and (tpromise? t)
-                             (equal? (tp-shape t) s)))
-                      (cdr args))))
-           (else #f)))))
 
 #;
 (: ensure-flat (-> (U flat Number) flat))
@@ -130,90 +144,284 @@
       (printf "~n####PP tensor: ")
       (pretty-print tp))
     (match tp
-      [(tpromise t-tcomp _)
-       #:when (tcomp? t-tcomp)
-       (let* ((instrs (compile-expr t-tcomp '()))
-              (res (run-instrs instrs)))
-         (set-tpromise-tensor! tp res)
-         res)]
       [(tpromise t _)
-       #:when (or (flat? t) (scalar? t)) t]
+       #:when (or (flat? t) (scalar? t) (tcomp? t))
+
+       (let-values (((instrs locals env)
+                     (run-compiler (compile-expr t (count-references t (hasheq)))
+                                   '()
+                                   '())))
+         (let ((res (run-instrs instrs locals env)))
+           (set-tpromise-tensor! tp res)
+           res))]
       ;; NOTE: This case runs when we use tp-scalarize to turn
       ;; the tensor to a scalar
-      (else tp))))
+      (_ tp))))
 
-#;
-(: tcomp-force (-> tcomp (U flat Number)))
+(struct counter-data (binding-name
+                      ref-count
+                      (compiled? #:mutable #:auto))
+  #:transparent)
+
+;; Count references so that the tcomp AST nodes that refer to the same memory
+;; location i.e. common AST nodes get extracted by let-binding them in the
+;; compiled output racket code.
+(define count-tcomp-references
+  (λ (tc counter)
+    (match-let (((counter-data tc-binding-name tc-ref-count _)
+                 (hash-ref counter tc
+                           (λ ()
+                             (counter-data (gensym 'local) 0)))))
+      (let ((counter^ (hash-set counter tc
+                                (counter-data tc-binding-name
+                                            (add1 tc-ref-count)))))
+        (match tc
+          [(tcomp-list->tensor lst)
+           (for/fold
+            ((counter^^ counter^))
+            ((l lst))
+             (count-references l counter^^))]
+          [(tcomp-build-tensor s f) counter^]
+          [(tcomp-tref tp i)
+           (count-references tp counter^)]
+          [(tcomp-trefs tp b)
+           (count-references tp counter^)]
+          [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+           (count-references
+            tp-z
+            (count-references
+             tp-t1
+             (count-references tp-t0 counter^)))]
+          [(tcomp-ext1-∇ tp zp f m shape-fn)
+           (count-references
+            zp
+            (count-references tp counter^))]
+          [(tcomp-ext2-ρ-scalar f tp-t tp-u)
+           (count-references
+            tp-u
+            (count-references tp-t counter^))]
+          [(tcomp-ext2-ρ tp-t tp-u f m n shape-fn)
+           (count-references
+            tp-u
+            (count-references tp-t counter^))]
+          [(tcomp-ext1-ρ-scalar f tp)
+           (count-references tp counter^)]
+          [(tcomp-ext1-ρ f m shape-fn tp)
+           (count-references tp counter^)]
+          [(tcomp-reshape s tp)
+           (count-references tp counter^)])))))
+
+(define count-references
+  (λ (t counter)
+    (match t
+      ((tpromise tc _)
+       (count-references tc counter))
+      ((tcomp) (count-tcomp-references t counter))
+      (_ counter))))
+
+;; TODO: Add tcomp nodes for let and var so that common refs to tcomp can become
+;; tcomp-vars and be bound in a tcomp-let.
+;;
+;; TODO: Add another intermediate pass that generates tcomp-let and tcomp-var
+;; nodes in such a way that it converts the abstract syntax graph to a abstract
+;; syntax tree.
+#|
+(tcomp ..) =>
+ (tcomp-let ((var (tcomp ...))) (tcomp ... var ....))
+
+(tpromise (tcomp ... (tcomp-var name) ...))
+|#
+
+(define extend-env
+  (λ (k v env)
+    `((,k . ,v) . ,env)))
+(define extend-locals extend-env)
+
+(define exists-in-env?
+  (λ (ft env)
+    (match env
+      ('() #f)
+      (`((,k . ,v) . ,_) #:when (eq? ft v) k)
+      (`(,_ . ,rest-env) (exists-in-env? ft rest-env)))))
+
+;; (: run-compiler (All (Instrs Env) (-> Env (Values Instrs Env))))
+(struct Compiler (run-compiler) #:transparent)
+
+(define run-compiler
+  (λ (c locals env)
+    ((Compiler-run-compiler c) locals env)))
+
+(define inj-compiler-val
+  (λ (v)
+    (Compiler (λ (locals env) (values v locals env)))))
+
+;; TODO: In the future scalars must be in the environment rather than the
+;; compiled instrs. This will make the instruction signature fully independent
+;; of the data in the environmnt.
+(define inj-compiler-flat
+  (λ (ft)
+    (Compiler
+      (λ (locals env)
+        (cond
+          ((exists-in-env? ft env) => (lambda (var) (values var locals env)))
+          ((and (flat? ft) (null? (flat-shape ft)))
+           (values ft locals env))
+          (else
+           (let ((new-var (gensym 'ft)))
+             (values new-var locals (extend-env new-var ft env)))))))))
+
+(define inj-compiler-instrs
+  (λ (instrs cd)
+    (match-let (((counter-data binding-var ref-count _) cd))
+      (Compiler (λ (locals env)
+                  (pretty-print instrs)
+                  (cond
+                    ((<= ref-count 1)
+                     (println "ref <= 1")
+                     (values instrs locals env))
+                    ((assv binding-var locals)
+                     (println "assv")
+                     (values binding-var locals env))
+                    (else
+                     (println "else")
+                     (values binding-var
+                             (extend-locals binding-var instrs locals)
+                             env))))))))
+
+(define ->c
+  (λ (c f)
+    (Compiler (λ (locals env)
+                (let-values (((instrs locals^ env^) (run-compiler c locals env)))
+                  (run-compiler (f instrs) locals^ env^))))))
+
+
+(define compile-tcomp
+  (λ (tc counter)
+    (let ((tc-counter-data
+           (hash-ref counter tc
+                     (λ ()
+                       (counter-data (gensym 'illegal) 0)))))
+      (match tc
+        [(tcomp-list->tensor lst)
+         (let ((instrs-list-compiler
+                (for/foldr ((list-compiler (inj-compiler-val '())))
+                  ((arg lst))
+                  (->c
+                   (compile-expr arg counter)
+                   (λ (instrs)
+                     (->c
+                      list-compiler
+                      (λ (instrs-list)
+                        (inj-compiler-val (cons instrs instrs-list)))))))))
+           (->c
+            instrs-list-compiler
+            (λ (instrs-list)
+              (inj-compiler-instrs `(flat:list->tensor (list ,@instrs-list))
+                                   tc-counter-data))))]
+        [(tcomp-build-tensor s f)
+         (inj-compiler-flat (flat:build-tensor s f))]
+        [(tcomp-tref tp i)
+         (->c
+          (compile-expr tp counter)
+          (λ (instrs)
+            (inj-compiler-instrs `(flat:tref ,instrs ,i) tc-counter-data)))]
+        [(tcomp-trefs tp b)
+         (->c
+          (compile-expr tp counter)
+          (λ (instrs)
+            (inj-compiler-instrs `(flat:trefs ,instrs ',b) tc-counter-data)))]
+        [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+         (->c
+          (compile-expr tp-t0 counter)
+          (λ (t0-instrs)
+            (->c
+             (compile-expr tp-t1 counter)
+             (λ (t1-instrs)
+               (->c
+                (compile-expr tp-z counter)
+                (λ (z-instrs)
+                  (inj-compiler-instrs
+                   `(let* ([b (if (zero? ,i) ,out0 ,out1)]
+                           [v (ext2-∇-result-res b)])
+                      (cond
+                        ((eqv? v 'uncalculated)
+                         (ext2-∇-forcer ,fᵈ ,r0 ,r1 ,shape-fn
+                                        ,t0-instrs ,t1-instrs
+                                        ,z-instrs ,out0 ,out1)
+                         (ext2-∇-result-res b))
+                        (else v)))
+                   tc-counter-data)))))))]
+        [(tcomp-ext1-∇ tp zp f m shape-fn)
+         (->c
+          (compile-expr tp counter)
+          (λ (t-instrs)
+            (->c
+             (compile-expr zp counter)
+             (λ (z-instrs)
+               (inj-compiler-instrs
+                `(scalarize
+                  (flat-ext1-∇ ,f ,m ,shape-fn
+                               (ensure-flat ,t-instrs)
+                               (ensure-flat ,z-instrs)))
+                tc-counter-data)))))]
+        [(tcomp-ext2-ρ-scalar f tp-t tp-u)
+         (->c
+          (compile-expr tp-t counter)
+          (λ (t-instrs)
+            (->c
+             (compile-expr tp-u counter)
+             (λ (u-instrs)
+               (inj-compiler-instrs
+                `(,f ,t-instrs ,u-instrs)
+                tc-counter-data)))))]
+        [(tcomp-ext2-ρ tp-t tp-u f m n shape-fn)
+         (->c
+          (compile-expr tp-t counter)
+          (λ (t-instrs)
+            (->c
+             (compile-expr tp-u counter)
+             (λ (u-instrs)
+               (inj-compiler-instrs
+                `(scalarize
+                  (flat-ext2-ρ ,f ,m ,n ,shape-fn
+                               (ensure-flat ,t-instrs)
+                               (ensure-flat ,u-instrs)))
+                tc-counter-data)))))]
+        [(tcomp-ext1-ρ-scalar f tp)
+         (->c
+          (compile-expr tp counter)
+          (λ (instrs)
+            (inj-compiler-instrs `(,f ,instrs)
+                                 tc-counter-data)))]
+        [(tcomp-ext1-ρ f m shape-fn tp)
+         (->c
+          (compile-expr tp counter)
+          (λ (instrs)
+            (inj-compiler-instrs `(scalarize
+                                   (flat-ext1-ρ ,f ,m ,shape-fn
+                                                (ensure-flat ,instrs)))
+                                 tc-counter-data)))]
+        [(tcomp-reshape s tp)
+         (->c
+          (compile-expr tp counter)
+          (λ (instrs)
+            (inj-compiler-instrs `(flat ',s
+                                        (flat-store ,instrs)
+                                        (flat-offset ,instrs))
+                                 tc-counter-data)))]))))
+
+(define print-compiler? (make-parameter #f))
 (define compile-expr
-  (λ (tc t-env)
+  (λ (tc counter)
+    (when (print-compiler?)
+      (pretty-print tc))
     (match tc
-      [(tcomp-list->tensor lst)
-       `(flat:list->tensor
-         (map (λ (l) (force/eval l #f)) ',lst))]
-      [(tcomp-build-tensor s f)
-       `(flat:build-tensor ',s ,f)]
-      [(tcomp-tref tp i)
-       `(flat:tref (force/eval ,tp) ,i)]
-      [(tcomp-trefs tp b)
-       `(flat:trefs (force/eval ,tp) ',b)]
-      [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
-       `(let* ([b (if (zero? ,i) ,out0 ,out1)]
-               [v (ext2-∇-result-res b)])
-          (cond
-            ((eqv? v 'uncalculated)
-             (ext2-∇-forcer ,fᵈ ,r0 ,r1 ,shape-fn
-                            (force/eval ,tp-t0)
-                            (force/eval ,tp-t1)
-                            (force/eval ,tp-z)
-                            ,out0 ,out1)
-             (ext2-∇-result-res b))
-            (else v)))]
-      [(tcomp-ext1-∇-prealloc tp zp f m shape-fn)
-       `(scalarize
-         (flat-ext1-∇ ,f ,m ,shape-fn
-                      (ensure-flat (force/eval ,tp))
-                      (ensure-flat (force/eval ,zp))))]
-      [(tcomp-ext1-∇ tp zp f m shape-fn)
-       `(let ([t (ensure-flat (force/eval ,tp #f))]
-              [z (ensure-flat (force/eval ,zp #f))])
-          (let* ((in-shape (flat-shape t))
-                 (base-shape (min-shape ,m in-shape))
-                 (out-shape (,shape-fn base-shape))
-                 (flat-f (functional->preallocated-1-∇ ,f base-shape out-shape)))
-            (scalarize (flat-ext1-∇ flat-f ,m ,shape-fn t z))))]
-      [(tcomp-ext2-ρ-scalar f tp-t tp-u)
-       `(,f (force/eval ,tp-t) (force/eval ,tp-u))]
-      [(tcomp-ext2-ρ-prealloc tp-t tp-u f m n shape-fn)
-       `(scalarize
-         (flat-ext2-ρ ,f ,m ,n ,shape-fn
-                      (ensure-flat (force/eval ,tp-t))
-                      (ensure-flat (force/eval ,tp-u))))]
-      [(tcomp-ext2-ρ tp-t tp-u f m n shape-fn)
-       `(let ([t (ensure-flat (force/eval ,tp-t #f))]
-              [u (ensure-flat (force/eval ,tp-u #f))])
-          (let* ((t-shape (min-shape ,m (flat-shape t)))
-                 (u-shape (min-shape ,n (flat-shape u)))
-                 (out-shape (,shape-fn t-shape u-shape))
-                 (flat-f (functional->preallocated-2-ρ ,f t-shape u-shape out-shape)))
-            (scalarize
-             (flat-ext2-ρ flat-f ,m ,n ,shape-fn t u))))]
-      [(tcomp-ext1-ρ-scalar f tp)
-       `(,f (force/eval ,tp))]
-      [(tcomp-ext1-ρ-prealloc f m shape-fn tp)
-       `(scalarize (flat-ext1-ρ ,f ,m ,shape-fn (ensure-flat (force/eval ,tp))))]
-      [(tcomp-ext1-ρ f m shape-fn tp)
-       `(let ([t (ensure-flat (force/eval ,tp #f))])
-          (let* ((in-shape (flat-shape t))
-                 (base-shape (min-shape ,m in-shape))
-                 (out-shape (,shape-fn base-shape))
-                 (flat-f (functional->preallocated-1-ρ ,f base-shape out-shape)))
-            (scalarize
-             (flat-ext1-ρ flat-f ,m ,shape-fn t))))]
-      [(tcomp-reshape s tp)
-       `(let ([t (force/eval ,tp #f)])
-          (flat ',s (flat-store t) (flat-offset t)))]
-      [(tcomp-tensor args)
-       `(merge-flats (map force/eval ',args))])))
+      [(tpromise tc _) (compile-expr tc counter)]
+      [tc #:when (flat? tc)
+          (inj-compiler-flat tc)]
+      [tc #:when (or (pair? tc) (scalar? tc))
+          (inj-compiler-val tc)]
+      [(tcomp) (compile-tcomp tc counter)])))
 
 (define bounded-idx*^
   (λ (shape idx*)
@@ -319,25 +527,35 @@
               (null? (tpromise-shape tp-u)))
          (tpromise (tcomp-ext2-ρ-scalar f tp-t tp-u) '())]
         [(flat:expects-preallocated? f)
-         (let* ([s0 (tp-shape tp-t)]
-                [s1 (tp-shape tp-u)]
-                [sf0 (min-shape m s0)]
-                [sf1 (min-shape n s1)]
-                [sf-out (shape-fn sf0 sf1)])
+         (let* ((s0 (tp-shape tp-t))
+                (s1 (tp-shape tp-u))
+                (sf0 (min-shape m s0))
+                (sf1 (min-shape n s1))
+                (sf-out (shape-fn sf0 sf1)))
            (tpromise
-            (tcomp-ext2-ρ-prealloc tp-t tp-u
-                                   f m n shape-fn)
+            (tcomp-ext2-ρ (ensure-tpromise tp-t)
+                          (ensure-tpromise tp-u)
+                          f m n shape-fn)
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]
         [else
-         (let* ([s0 (tp-shape tp-t)]
-                [s1 (tp-shape tp-u)]
-                [sf0 (min-shape m s0)]
-                [sf1 (min-shape n s1)]
-                [sf-out (shape-fn sf0 sf1)])
+         (let* ((s0 (tp-shape tp-t))
+                (s1 (tp-shape tp-u))
+                (sf0 (min-shape m s0))
+                (sf1 (min-shape n s1))
+                (sf-out (shape-fn sf0 sf1))
+                (t-shape (min-shape m s0))
+                (u-shape (min-shape n s1))
+                (out-shape (shape-fn t-shape u-shape))
+                (flat-f (functional->preallocated-2-ρ
+                         f
+                         t-shape
+                         u-shape
+                         out-shape)))
            (tpromise
-            (tcomp-ext2-ρ (ensure-tpromise tp-t) (ensure-tpromise tp-u)
-                          f m n shape-fn)
+            (tcomp-ext2-ρ (ensure-tpromise tp-t)
+                          (ensure-tpromise tp-u)
+                          flat-f m n shape-fn)
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]))))
 
@@ -403,7 +621,10 @@
       (λ (tp-t tp-u tp-z)
         (cond
           ((flat:expects-preallocated? f)
-           (tp-f f tp-t tp-u tp-z))
+           (tp-f f
+                 (ensure-tpromise tp-t)
+                 (ensure-tpromise tp-u)
+                 (ensure-tpromise tp-z)))
           [else (let* ((t-shape (min-shape m (tp-shape tp-t)))
                        (u-shape (min-shape n (tp-shape tp-u)))
                        (out-shape (shape-fn t-shape u-shape))
@@ -486,37 +707,6 @@
       ((scalar? v) (tpromise (ensure-flat v) '()))
       (else v))))
 
-
-(define flat-gradient-maker2
-  (λ (f m n)
-    (cond
-      ((and (zero? m) (zero? n))
-       (λ (g0
-           g1
-           v0 i0 stride0
-           v1 i1 stride1
-           vz iz stride-z)
-         (let ((z (vref vz iz))
-               (a (vref v0 i0))
-               (b (vref v1 i1)))
-           (let-values (((da db) (f a b z)))
-             (vset! g0 i0
-                    (+ (vref g0 i0) da))
-             (vset! g1 i1
-                    (+ (vref g1 i1) db))))))
-      (else f))))
-
-(define flat-gradient-maker1
-  (λ (f0 m)
-    (cond
-      ((zero? m)
-       (λ (g0 v0 i0 stride0 vz iz stride-z)
-         (let ((z (vref vz iz))
-               (a (vref v0 i0)))
-           (vset! g0 i0 (+ (vref g0 i0)
-                           (f0 a z))))))
-      (else f0))))
-
 (define tp-rank
   (λ (tp)
     (flat:len (tp-shape tp))))
@@ -526,12 +716,30 @@
     (cond
       ((= (flat:size-of s) (flat:size-of (tpromise-shape tp)))
        (tpromise (tcomp-reshape s tp) s))
-      (else (error "Cannot reshape ~a to ~a~%" (tpromise-shape tp) s)))))
+      (else (error 'shape-error "Cannot reshape ~a to ~a~%" (tpromise-shape tp) s)))))
 
 (define tensor?
   (lambda (tp)
     (or (tpromise? tp) (flat? tp) (scalar? tp))))
 
+(define get-compiled
+  (λ (t)
+    (let-values (((instrs locals env)
+                  (run-compiler
+                   (compile-expr t
+                                 (count-references t (hasheq)))
+                   '() '())))
+      (make-instrs instrs locals env))))
+(define run-compiled
+  (λ (t)
+    (let-values (((instrs locals env)
+                  (run-compiler
+                   (compile-expr t
+                                 (count-references t (hasheq)))
+                   '() '())))
+      (make-instrs instrs locals env))))
+;; TODO: may have to remove call to force*1 & force*2 so that this can be
+;; handled at compile time
 (define force*1
   (λ (t f)
     (f (force/eval t))))

@@ -29,9 +29,6 @@
     (let ((ra (ρ da)))
       (dual (ρ-fn ra)
         (λ (d z σ)
-          ;; TODO: need force*-1 here while calling ∇-fn
-          #;(let ((ga (∇-fn ra z)))
-            ((κ da) da #;ga (tp-force ga) σ))
           (force*1 (∇-fn ra z)
                    (λ (ga)
                      ((κ da) da ga σ))))))))
