@@ -1,5 +1,6 @@
 #lang racket
 (require "tensors/0-lazy.rkt")
+(require "tensors/1-reflect.rkt")
 (require "tensors/A-equality.rkt")
 
 (provide start-vector-manager vector-manager-report)
@@ -11,7 +12,9 @@
 
 (provide ext1-ρ ext2-ρ ext1-∇ ext2-∇)
 
-(provide force/eval scalarize)
+(provide ↓ scalarize)
+
+(provide print-compiler?)
 
 ;; These will get overriden by duals
 (provide tensor?)

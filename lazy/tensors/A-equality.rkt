@@ -1,11 +1,11 @@
 #lang racket
 
-(require "0-lazy.rkt")
+(require "1-reflect.rkt")
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 
 (define tp-tensor-equal?
   (λ (tp-actual tp-expected)
-    (flat:tensor-equal? (force/eval tp-actual) (force/eval tp-expected))))
+    (flat:tensor-equal? (↓ tp-actual) (↓ tp-expected))))
 
 (require rackunit)
 (define-binary-check (tp-check-tensor-equal? tp-tensor-equal? actual expected))

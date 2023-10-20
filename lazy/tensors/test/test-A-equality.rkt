@@ -1,5 +1,6 @@
 (module+ test
   (require rackunit)
+  (require "0-lazy.rkt")
 
   (define t0
     (reshape '(2 3 4)

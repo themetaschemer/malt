@@ -389,4 +389,4 @@
          functional->preallocated-1-ρ functional->preallocated-1-∇
          functional->preallocated-2-ρ functional->preallocated-2-∇
          merge-shapes min-shape ext2-shapes idxs
-         flat-ext1-∇ flat-ext1-ρ flat-ext2-ρ scalarize)
+         flat-ext1-∇ flat-ext1-ρ flat-ext2-ρ scalarize ensure-flat)

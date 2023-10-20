@@ -9,11 +9,25 @@
 (define ∇-function
   (λ (f) (f ∇-function)))
 
-;;TODO: add more metadata to functions so that we know which function is being
-;; passed to the extend functions.
-
 (define shape-fn
   (λ (f) (f shape-fn)))
+
+;;TODO: make prim1 and prim2 func-callable structures using the prop:procedure
+;;struct property
+
+(struct prim (ρ-fn ∇-fn shape-fn
+                     signature ;;autogenerate this before runtime to avoid
+                               ;;changing this during runtime
+                     proc ;; This will be the prim*-dual func
+                     prealloc? ;; use this to redefine expects-preallocated?
+                     )
+  #:property prop:procedure (λ (this . args)
+                              (apply (prim-proc this) args)))
+
+;;TODO: move expects-preallocated?, functional->preallocated-1-ρ,
+;;functional->preallocated-1-∇, functional->preallocated-2-ρ,
+;;functional->preallocated-2-∇ here because they depend on the representation of
+;;prims
 
 (define prim1
   (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
@@ -49,12 +63,6 @@
           (rb (ρ db)))
       (dual (ρ-fn ra rb)
         (λ (d z σ)
-          #;
-          (let-values (((ga gb) (∇-fn ra rb z)
-                                ;; TODO: define a force*-2 for this
-                                #;(force*-2 z (lambda (z) (∇-fn ra rb z)))))
-            (let ((σ-hat ((κ da) da (tp-force ga) σ)))
-              ((κ db) db (tp-force gb) σ-hat)))
           (force*2 (λ () (∇-fn ra rb z))
                    (λ (ga gb)
                      (let ((σ-hat ((κ da) da ga σ)))

@@ -1,12 +1,13 @@
 (module+ test
   (require rackunit)
-  (require (only-in "../tensors.rkt" tensor))
+  (require (only-in "../tensors.rkt" tensor print-compiler?))
 
   ;; Check basic numericals
   (let ((a 2)
         (b 3))
     (check-ρ-∇ (d+ a b) 5 (list 1.0 1.0))
-    (check-ρ-∇ (d- a b) -1 (list 1.0 -1.0))
+    (parameterize ((print-compiler? '(Cache-Hit)))
+      (check-ρ-∇ (d- a b) -1 (list 1.0 -1.0)))
     (check-ρ-∇ (d* a b) 6 (list 3.0 2.0))
     (check-ρ-∇ (d/ a b)
                2/3
@@ -35,7 +36,6 @@
     (check-dual-equal? ((∇¹ z) a a) (list 2.5 2.0)))
 
   ;; Check numericals with vector-duals
-
   (let ((a (tensor 2.0 3.0 4.0))
         (b (tensor 3.0 8.0 9.0)))
     (check-ρ-∇ (d+ a b) (tensor 5.0 11.0 13.0) (list (tensor 1.0 1.0 1.0) (tensor 1.0 1.0 1.0)))

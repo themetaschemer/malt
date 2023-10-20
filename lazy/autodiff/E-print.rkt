@@ -2,6 +2,7 @@
 
 (require "A-autodiff.rkt")
 (require "../tensors/0-lazy.rkt")
+(require "../tensors/1-reflect.rkt")
 (require (except-in "../../flat-tensors/ext-impl.rkt" scalarize))
 
 (define max-tensor-print-length (make-parameter 5))
@@ -11,7 +12,7 @@
     (cond
       ((dual? y) (make-printable (ρ y)))
       ((tpromise? y)
-       (make-printable (force/eval y) max-length))
+       (make-printable (↓ y) max-length))
       ((flat? y) (make-printable-flat y max-length))
       ((list? y)
        (map (λ (le) (make-printable le max-length)) y))

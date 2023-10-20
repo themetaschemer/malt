@@ -25,7 +25,12 @@ LAZY_AUTODIFF_DIR=$(LAZY_DIR)/autodiff
 LAZY_EXT_OPS_DIR=$(LAZY_DIR)/ext-ops
 
 LAZY_TENSORS_SOURCES=\
+  $(LAZY_TENSORS_DIR)/c0-ast.rkt\
+  $(LAZY_TENSORS_DIR)/c1-racket-runtime.rkt\
+  $(LAZY_TENSORS_DIR)/c2-interpreter.rkt\
+  $(LAZY_TENSORS_DIR)/c3-compiler.rkt\
   $(LAZY_TENSORS_DIR)/0-lazy.rkt\
+  $(LAZY_TENSORS_DIR)/1-reflect.rkt\
   $(LAZY_TENSORS_DIR)/A-equality.rkt\
   $(LAZY_DIR)/tensors.rkt
 
