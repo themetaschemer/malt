@@ -1,19 +1,18 @@
 #lang racket
 
 (require "../tensors.rkt")
-(require (only-in "../tensors/0-lazy.rkt" force/eval))
 (require "A-autodiff.ss")
 
 (require rackunit)
 
 (define forced-ρ
   (λ (d)
-    (force/eval (ρ d))))
+    (↓ (ρ d))))
 
 (define-binary-check (check-dual-equal? equal-wt? actual expected))
 (define-check (ρ-∇-checker fn args ans grads)
-  (let* ((y (force/eval (apply fn args)))
-         (g (force/eval (apply (∇¹ fn) args)))
+  (let* ((y (↓ (apply fn args)))
+         (g (↓ (apply (∇¹ fn) args)))
          (ans-ρ (ρ ans)))
     (cond
       ((and (equal-wt? ans-ρ (ρ y))

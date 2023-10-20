@@ -15,7 +15,8 @@
                   functional->preallocated-2-ρ
                   functional->preallocated-2-∇
                   idxs
-                  scalarize))
+                  scalarize
+                  ensure-flat))
 (require (only-in "autodiff/E-print.rkt"
                   make-printable-flat
                   fake-tensor))
