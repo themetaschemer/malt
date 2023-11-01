@@ -68,12 +68,12 @@ This entry point is used by some sub-modules within Malt where both non-differen
 primitive operations are necessary.
 
 
-@defmodule[malt/learner #:no-declare]
+@defmodule[malt/learner #:no-declare #:lang]
 
-This entry point provides the tensor representation, automatic differentiation, and extended operators to allow users
+The @code{malt/learner} entry point can work as either a @seclink["hash-lang" #:doc '(lib "scribblings/guide/guide.scrbl")]{@tt{#lang}} or a module.
+It provides the tensor representation, automatic differentiation, and extended operators to allow users
 to develop code exactly as it appears in @italic{The Little Learner}. It excludes all the deep learning specific operations. This is the default representation
 of tensors when using the @code{malt} entry point.
-
 
 @defmodule[malt/nested-tensors #:no-declare]
 
@@ -84,7 +84,7 @@ using this representation.
 @defmodule[malt/flat-tensors #:no-declare]
 
 This entry point provides the tensor representation, automatic differentiation, and extended operators for the flat
-tensor representation referred to in @italic{Appendix B. I Could Have Raced All Day}. 
+tensor representation referred to in @italic{Appendix B. I Could Have Raced All Day}.
 
 @defmodule[malt/tools #:no-declare]
 
