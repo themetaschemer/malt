@@ -4,8 +4,8 @@
   (require "0-lazy.rkt")
 
   (define-check (check-signatures-equal? t1 t2)
-    (let-values (((eds-instrs-1 ds1 build-refs1) (extract-data-segment t1))
-                 ((eds-instrs-2 ds2 build-refs2) (extract-data-segment t2)))
+    (let-values (((eds-instrs-1 ds1) (extract-data-segment t1))
+                 ((eds-instrs-2 ds2) (extract-data-segment t2)))
       (let ((sig1 (generate-signature eds-instrs-1))
             (sig2 (generate-signature eds-instrs-2)))
         (with-check-info
@@ -13,16 +13,14 @@
            ('extracted-instrs-2 eds-instrs-2)
            ('data-segment-1 ds1)
            ('data-segment-2 ds2)
-           ('refs-for-build-tensor-nodes-1 build-refs1)
-           ('refs-for-build-tensor-nodes-2 build-refs2)
            ('signature-1 sig1)
            ('signature-2 sig2))
           (unless (equal? sig1 sig2)
             (fail-check "signature mismatch"))))))
 
   (define-check (check-signatures-not-equal? t1 t2)
-    (let-values (((eds-instrs-1 ds1 build-refs1) (extract-data-segment t1))
-                 ((eds-instrs-2 ds2 build-refs2) (extract-data-segment t2)))
+    (let-values (((eds-instrs-1 ds1) (extract-data-segment t1))
+                 ((eds-instrs-2 ds2) (extract-data-segment t2)))
       (let ((sig1 (generate-signature eds-instrs-1))
             (sig2 (generate-signature eds-instrs-2)))
         (with-check-info
@@ -30,8 +28,6 @@
            ('extracted-instrs-2 eds-instrs-2)
            ('data-segment-1 ds1)
            ('data-segment-2 ds2)
-           ('refs-for-build-tensor-nodes-1 build-refs1)
-           ('refs-for-build-tensor-nodes-2 build-refs2)
            ('signature-1 sig1)
            ('signature-2 sig2))
           (when (equal? sig1 sig2)
