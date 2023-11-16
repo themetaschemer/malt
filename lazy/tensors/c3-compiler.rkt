@@ -28,14 +28,11 @@
 ;;  * the symbol 'uncalculated as an initial placeholder for the output of
 ;;    tcomp-ext2-∇ which will be later replaced by the flat tensor output
 ;;
-;; TODO: Remove all uses of build-refs because we longer have tcomp-build-tensor nodes
 (define extract-data-segment
   (λ (t)
-    (let-values (((t^ data-segment-stack build-refs) (eds-expr t '() (hasheq))))
+    (let-values (((t^ data-segment-stack) (eds-expr t '())))
       ;; convert data segment stack to data segment array
-      (values t^
-              (list->vector (reverse data-segment-stack))
-              build-refs))))
+      (values t^ (list->vector (reverse data-segment-stack))))))
 
 ;; Checks if a member equivalent to v exists in dss using equiv? and based on
 ;; that returns the dss index where v was inserted and the new dss with
@@ -50,41 +47,40 @@
       (else (values (length dss) (cons v dss))))))
 
 (define eds-expr
-  (λ (t dss build-refs)
+  (λ (t dss)
     (match t
       (s #:when (number? s)
-        (values s dss build-refs))
+        (values s dss))
       (ft
        #:when (flat? ft)
        (let-values (((idx dss^) (insert-unless-exists ft dss eq?)))
-         (values (tcomp-ds-ref idx) dss^ build-refs)))
+         (values (tcomp-ds-ref idx) dss^)))
       ((tpromise tc s)
-       (let-values (((tc^ dss^ build-refs^) (eds-expr tc dss build-refs)))
+       (let-values (((tc^ dss^) (eds-expr tc dss)))
          (cond
-           ((number? tc^) (values tc^ dss^ build-refs^))
-           (else (values (tpromise tc^ s) dss^ build-refs^)))))
-      ((tcomp) (eds-tcomp t dss build-refs)))))
+           ((number? tc^) (values tc^ dss^))
+           (else (values (tpromise tc^ s) dss^)))))
+      ((tcomp) (eds-tcomp t dss)))))
 
 (define eds-tcomp
-  (λ (tc dss build-refs)
+  (λ (tc dss)
     (match tc
       [(tcomp-list->tensor lst)
-       (let-values (((ts dss^ build-refs^)
+       (let-values (((ts dss^)
                      (for/fold ((ts '())
-                                (dss^ dss)
-                                (build-refs^ build-refs))
+                                (dss^ dss))
                                ((l lst))
-                       (let-values (((t dss^^ build-refs^^)
-                                     (eds-expr l dss^ build-refs^)))
-                         (values (cons t ts) dss^^ build-refs^^)))))
-         (values (tcomp-list->tensor (reverse ts)) dss^ build-refs^))]
+                       (let-values (((t dss^^)
+                                     (eds-expr l dss^)))
+                         (values (cons t ts) dss^^)))))
+         (values (tcomp-list->tensor (reverse ts)) dss^))]
 
       [(tcomp-tref tp i)
-       (let-values (((t dss^ build-refs^) (eds-expr tp dss build-refs)))
+       (let-values (((t dss^) (eds-expr tp dss)))
          (let-values (((idx dss^^) (insert-unless-exists i dss^ eqv?)))
-           (values (tcomp-tref t (tcomp-ds-ref idx)) dss^^ build-refs^)))]
+           (values (tcomp-tref t (tcomp-ds-ref idx)) dss^^)))]
       [(tcomp-trefs tp i-list)
-       (let-values (((t dss^ build-refs^) (eds-expr tp dss build-refs)))
+       (let-values (((t dss^) (eds-expr tp dss)))
          (let-values (((idx dss^^)
                        ;; Comparison by flat:tensor-equal? is okay because
                        ;; members of b are integers (not reals) and their
@@ -94,39 +90,37 @@
                        (insert-unless-exists (flat:list->tensor i-list)
                                              dss^
                                              flat:tensor-equal?)))
-           (values (tcomp-trefs t (tcomp-ds-ref idx)) dss^^ build-refs^)))]
+           (values (tcomp-trefs t (tcomp-ds-ref idx)) dss^^)))]
       [(tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
-       (let-values (((t0 dss^ build-refs^) (eds-expr tp-t0 dss build-refs)))
-         (let-values (((t1 dss^^ build-refs^^) (eds-expr tp-t1 dss^ build-refs^)))
-           (let-values (((z dss^^^ build-refs^^^) (eds-expr tp-z dss^^ build-refs^^)))
+       (let-values (((t0 dss^) (eds-expr tp-t0 dss)))
+         (let-values (((t1 dss^^) (eds-expr tp-t1 dss^)))
+           (let-values (((z dss^^^) (eds-expr tp-z dss^^)))
              (values (tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn t0 t1 z
                                    (length dss^^^)
                                    (add1 (length dss^^^)) i)
-                     (cons out1 (cons out0 dss^^^))
-                     build-refs^^^))))]
+                     (cons out1 (cons out0 dss^^^))))))]
       [(tcomp-ext1-∇ tp zp f signature m shape-fn)
-       (let-values (((tp^ dss^ build-refs^) (eds-expr tp dss build-refs)))
-         (let-values (((zp^ dss^^ build-refs^^) (eds-expr zp dss^ build-refs^)))
+       (let-values (((tp^ dss^) (eds-expr tp dss)))
+         (let-values (((zp^ dss^^) (eds-expr zp dss^)))
            (values (tcomp-ext1-∇ tp^ zp^ f signature m shape-fn)
-                   dss^^
-                   build-refs^^)))]
+                   dss^^)))]
       [(tcomp-ext2-ρ-scalar f signature tp-t tp-u)
-       (let-values (((t dss^ build-refs^) (eds-expr tp-t dss build-refs)))
-         (let-values (((u dss^^ build-refs^^) (eds-expr tp-u dss^ build-refs^)))
-           (values (tcomp-ext2-ρ-scalar f signature t u) dss^^ build-refs^^)))]
+       (let-values (((t dss^) (eds-expr tp-t dss)))
+         (let-values (((u dss^^) (eds-expr tp-u dss^)))
+           (values (tcomp-ext2-ρ-scalar f signature t u) dss^^)))]
       [(tcomp-ext2-ρ tp-t tp-u f signature m n shape-fn)
-       (let-values (((t dss^ build-refs^) (eds-expr tp-t dss build-refs)))
-         (let-values (((u dss^^ build-refs^^) (eds-expr tp-u dss^ build-refs^)))
-           (values (tcomp-ext2-ρ t u f signature m n shape-fn) dss^^ build-refs^^)))]
+       (let-values (((t dss^) (eds-expr tp-t dss)))
+         (let-values (((u dss^^) (eds-expr tp-u dss^)))
+           (values (tcomp-ext2-ρ t u f signature m n shape-fn) dss^^)))]
       [(tcomp-ext1-ρ-scalar f signature tp)
-       (let-values (((tp^ dss^ build-refs^) (eds-expr tp dss build-refs)))
-           (values (tcomp-ext1-ρ-scalar f signature tp^) dss^ build-refs^))]
+       (let-values (((tp^ dss^) (eds-expr tp dss)))
+           (values (tcomp-ext1-ρ-scalar f signature tp^) dss^))]
       [(tcomp-ext1-ρ f signature m shape-fn tp)
-       (let-values (((tp^ dss^ build-refs^) (eds-expr tp dss build-refs)))
-           (values (tcomp-ext1-ρ f signature m shape-fn tp^) dss^ build-refs^))]
+       (let-values (((tp^ dss^) (eds-expr tp dss)))
+           (values (tcomp-ext1-ρ f signature m shape-fn tp^) dss^))]
       [(tcomp-reshape s tp)
-       (let-values (((tp^ dss^ build-refs^) (eds-expr tp dss build-refs)))
-           (values (tcomp-reshape s tp^) dss^ build-refs^))])))
+       (let-values (((tp^ dss^) (eds-expr tp dss)))
+           (values (tcomp-reshape s tp^) dss^))])))
 
 (define hash-signatures?
   (make-parameter #f))
@@ -176,52 +170,52 @@
 
       [(tcomp-tref tp i)
        (sign
-        (format "tr~a~a" (gs-expr tp ) (gs-expr i )))]
+        (format "tr~a~a" (gs-expr tp) (gs-expr i)))]
       [(tcomp-trefs tp b)
        (sign
-        (format "trs~a~a" (gs-expr tp ) (gs-expr b )))]
+        (format "trs~a~a" (gs-expr tp) (gs-expr b)))]
       [(tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
        (sign
         (format "e2∇~a~a_~a~a~a~a~a~a~a~a"
                 signature r0 r1 shape-fn
-                (gs-expr tp-t0 )
-                (gs-expr tp-t1 )
-                (gs-expr tp-z )
+                (gs-expr tp-t0)
+                (gs-expr tp-t1)
+                (gs-expr tp-z)
                 out0 out1
                 i))]
       [(tcomp-ext1-∇ tp zp f signature m shape-fn)
        (sign
         (format "e1∇~a~a~a~a~a"
                 signature m shape-fn
-                (gs-expr tp )
-                (gs-expr zp )))]
+                (gs-expr tp)
+                (gs-expr zp)))]
       [(tcomp-ext2-ρ-scalar f signature tp-t tp-u)
        (sign
         (format "e2ρs~a~a~a"
                 signature
-                (gs-expr tp-t )
-                (gs-expr tp-u )))]
+                (gs-expr tp-t)
+                (gs-expr tp-u)))]
       [(tcomp-ext2-ρ tp-t tp-u f signature m n shape-fn)
        (sign
         (format "e2ρ~a~a_~a~a~a~a"
                 signature m n shape-fn
-                (gs-expr tp-t )
-                (gs-expr tp-u )))]
+                (gs-expr tp-t)
+                (gs-expr tp-u)))]
       [(tcomp-ext1-ρ-scalar f signature tp)
        (sign
-        (format "e1ρs~a~a" signature (gs-expr tp )))]
+        (format "e1ρs~a~a" signature (gs-expr tp)))]
       [(tcomp-ext1-ρ f signature m shape-fn tp)
        (sign
         (format "e1ρ~a~a~a~a"
                 signature m shape-fn
-                (gs-expr tp )))]
+                (gs-expr tp)))]
       [(tcomp-reshape s tp)
        (sign
         (format "r~a~a"
-                s (gs-expr tp ) ))]
+                s (gs-expr tp)))]
       [(tcomp-ds-ref index)
        (sign
-        (format "dsr~a" index ))])))
+        (format "dsr~a" index))])))
 
 ;; Count references so that the tcomp AST nodes that refer to the same memory
 ;; location i.e. common AST nodes get extracted by let-binding them in the
@@ -459,34 +453,34 @@
       (`(,_ . ,rest-env) (exists-in-env? ft rest-env)))))
 
 (define generate-racket
-  (λ (t build-refs)
-    (gr-expr t build-refs)))
+  (λ (t)
+    (gr-expr t)))
 
 (define gr-expr
-  (λ (t build-refs)
+  (λ (t)
     (match t
-      [(tpromise tc _) (gr-expr tc build-refs)]
+      [(tpromise tc _) (gr-expr tc)]
       [v #:when (number? v) v]
-      [(tcomp) (gr-tcomp t build-refs)])))
+      [(tcomp) (gr-tcomp t)])))
 
 (define gr-tcomp
-  (λ (tc build-refs)
+  (λ (tc)
     (match tc
       [(tcomp-list->tensor lst)
-       (let ((instrs-list (map (λ (t) (gr-expr t build-refs)) lst)))
+       (let ((instrs-list (map (λ (t) (gr-expr t)) lst)))
          `(flat:list->tensor (list ,@instrs-list)))]
       [(tcomp-tref tp i)
-       (let ((instrs (gr-expr tp build-refs))
-             (i-instrs (gr-expr i build-refs)))
+       (let ((instrs (gr-expr tp))
+             (i-instrs (gr-expr i)))
          `(flat:tref ,instrs ,i-instrs))]
       [(tcomp-trefs tp b)
-       (let ((instrs (gr-expr tp build-refs))
-             (b-instrs (gr-expr b build-refs)))
+       (let ((instrs (gr-expr tp))
+             (b-instrs (gr-expr b)))
          `(rt:trefs ,instrs ,b-instrs))]
       [(tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
-       (let ((t0-instrs (gr-expr tp-t0 build-refs))
-             (t1-instrs (gr-expr tp-t1 build-refs))
-             (z-instrs (gr-expr tp-z build-refs)))
+       (let ((t0-instrs (gr-expr tp-t0))
+             (t1-instrs (gr-expr tp-t1))
+             (z-instrs (gr-expr tp-z)))
          (let ((b (if (zero? i) out0 out1)))
            `(let* ([b ,b]
                    [v (data-segment-ref b)])
@@ -498,39 +492,39 @@
                  (data-segment-ref b))
                 (else v)))))]
       [(tcomp-ext1-∇ tp zp f sign m shape-fn)
-       (let ((t-instrs (gr-expr tp build-refs))
-             (z-instrs (gr-expr zp build-refs)))
+       (let ((t-instrs (gr-expr tp))
+             (z-instrs (gr-expr zp)))
          `(scalarize
            (flat-ext1-∇ ,f ,m ,shape-fn
                         (ensure-flat ,t-instrs)
                         (ensure-flat ,z-instrs))))]
       [(tcomp-ext2-ρ-scalar f sign tp-t tp-u)
-       (let ((t-instrs (gr-expr tp-t build-refs))
-             (u-instrs (gr-expr tp-u build-refs)))
+       (let ((t-instrs (gr-expr tp-t))
+             (u-instrs (gr-expr tp-u)))
          `(,f ,t-instrs ,u-instrs))]
       [(tcomp-ext2-ρ tp-t tp-u f sign m n shape-fn)
-       (let ((t-instrs (gr-expr tp-t build-refs))
-             (u-instrs (gr-expr tp-u build-refs)))
+       (let ((t-instrs (gr-expr tp-t))
+             (u-instrs (gr-expr tp-u)))
          `(scalarize
            (flat-ext2-ρ ,f ,m ,n ,shape-fn
                         (ensure-flat ,t-instrs)
                         (ensure-flat ,u-instrs))))]
       [(tcomp-ext1-ρ-scalar f sign tp)
-       (let ((instrs (gr-expr tp build-refs)))
+       (let ((instrs (gr-expr tp)))
          `(,f ,instrs))]
       [(tcomp-ext1-ρ f sign m shape-fn tp)
-       (let ((instrs (gr-expr tp build-refs)))
+       (let ((instrs (gr-expr tp)))
          `(scalarize
            (flat-ext1-ρ ,f ,m ,shape-fn
                         (ensure-flat ,instrs))))]
       [(tcomp-reshape s tp)
-       (let ((instrs (gr-expr tp build-refs)))
+       (let ((instrs (gr-expr tp)))
          `(flat ',s
                 (flat-store ,instrs)
                 (flat-offset ,instrs)))]
       [(tcomp-let lhs rhs body)
-       (let ((rhs-instrs (gr-expr rhs build-refs))
-             (body-instrs (gr-expr body build-refs)))
+       (let ((rhs-instrs (gr-expr rhs))
+             (body-instrs (gr-expr body)))
          `(let ((,lhs ,rhs-instrs))
             ,body-instrs))]
       [(tcomp-var name) name]
@@ -554,7 +548,7 @@
 (define compile-tensor
   (λ (t)
     (display-compiler-trace 'Source-Tensor t)
-    (let-values (((eds-instrs ds build-refs) (extract-data-segment t)))
+    (let-values (((eds-instrs ds) (extract-data-segment t)))
       (display-compiler-trace 'Extract-Data-Segment-data ds)
       (display-compiler-trace 'Extract-Data-Segment-instructions eds-instrs)
       (let ((signature (generate-signature eds-instrs)))
@@ -569,7 +563,7 @@
              (display-compiler-trace 'Count-References counter)
              (let ((extracted (extract-common-subexpressions eds-instrs counter)))
                (display-compiler-trace 'Extract-Common-Subexpressions extracted)
-               (let ((rkt (generate-racket extracted build-refs)))
+               (let ((rkt (generate-racket extracted)))
                  (display-compiler-trace 'Generate-Racket rkt)
                  (hash-set! (cache) signature rkt)
                  (values rkt ds))))))))))
@@ -577,14 +571,14 @@
 ;;TODO: update this for new compiler passes
 (define compile-tensor/checks
   (λ (t)
-    (let-values (((eds-instrs ds build-refs) (extract-data-segment t)))
+    (let-values (((eds-instrs ds) (extract-data-segment t)))
       (flat:check-tensor-equal? (interp-tensor t) (interp-tensor eds-instrs))
       (let ((counter (count-references t)))
         (let ((extracted (extract-common-subexpressions t counter)))
           (flat:check-tensor-equal? (interp-tensor t) (interp-tensor extracted))
           (for/list ((cd (hash-values (count-references extracted))))
             (check-equal? (counter-data-ref-count cd) 1))
-          (let-values (((rkt env) (generate-racket extracted build-refs)))
+          (let-values (((rkt env) (generate-racket extracted)))
             (flat:check-tensor-equal? (interp-tensor extracted)
                                       (interp-racket rkt env))
             (values rkt env)))))))
