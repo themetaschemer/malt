@@ -64,6 +64,8 @@ instructions refering to the same gensym variable
   (λ (lst)
     (cond
      [(andmap number? lst) (apply flat:tensor lst)]
+     [(andmap (λ (v) (and (tpromise? v) (flat:flat? (tpromise-tensor v)))) lst)
+      (apply flat:tensor (map tpromise-tensor lst))]
      [else (tcomp-list->tensor lst)])))
 
 #;
@@ -148,7 +150,7 @@ instructions refering to the same gensym variable
 
 (define build-tpromise
   (λ (s f)
-    (tpromise (tcomp-build-tensor s f) s)))
+    (tpromise (flat:build-tensor s f) s)))
 
 (define tp-trefs
   (λ (tp b)
@@ -164,19 +166,26 @@ instructions refering to the same gensym variable
                  `(,(length b)
                    . ,(cdr (tpromise-shape tp))))])))
 
+;; Default arguments shape-fn and expects-prealloc? need not be passed when f is
+;; a function on scalars and doesn't expect a preallocated output vector as its
+;; argument. The signature argument is only supposed to be passed within the
+;; definition of ext1 and ext2 functions in B-prims.rkt.
 (define tp-ext1-ρ
-  (λ (f m [shape-fn scalar-shape])
+  (λ (f m
+        [shape-fn scalar-shape]
+        [expects-prealloc? #f]
+        [signature (format "~a" f)])
     (λ (tp)
       (cond
         [(scalar? tp) (f tp)]
         [(and (tpromise? tp)
               (null? (tpromise-shape tp)))
          (tpromise
-          (tcomp-ext1-ρ-scalar f tp)
+          (tcomp-ext1-ρ-scalar f signature tp)
           '())]
-        [(flat:expects-preallocated? f)
+        [expects-prealloc?
          (tpromise
-          (tcomp-ext1-ρ f m shape-fn tp)
+          (tcomp-ext1-ρ f signature m shape-fn tp)
           (merge-shapes
            (tp-shape tp)
            m
@@ -188,15 +197,19 @@ instructions refering to the same gensym variable
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
            (tpromise
-            (tcomp-ext1-ρ flat-f m shape-fn tp)
+            (tcomp-ext1-ρ flat-f signature m shape-fn tp)
             (merge-shapes
              (tp-shape tp)
              m
              (shape-fn
               (min-shape m (tp-shape tp))))))]))))
 
+;; See comment for tp-ext1-ρ
 (define tp-ext2-ρ
-  (λ (f m n [shape-fn scalar-shape])
+  (λ (f m n
+        [shape-fn scalar-shape]
+        [expects-prealloc? #f]
+        [signature (format "~a" f)])
     (λ (tp-t tp-u)
       (cond
         ((and (number? tp-t) (number? tp-u))
@@ -204,8 +217,8 @@ instructions refering to the same gensym variable
         [(and (tpromise? tp-t) (tpromise? tp-u)
               (null? (tpromise-shape tp-t))
               (null? (tpromise-shape tp-u)))
-         (tpromise (tcomp-ext2-ρ-scalar f tp-t tp-u) '())]
-        [(flat:expects-preallocated? f)
+         (tpromise (tcomp-ext2-ρ-scalar f signature tp-t tp-u) '())]
+        [expects-prealloc?
          (let* ((s0 (tp-shape tp-t))
                 (s1 (tp-shape tp-u))
                 (sf0 (min-shape m s0))
@@ -214,7 +227,7 @@ instructions refering to the same gensym variable
            (tpromise
             (tcomp-ext2-ρ (ensure-tpromise tp-t)
                           (ensure-tpromise tp-u)
-                          f m n shape-fn)
+                          f signature m n shape-fn)
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]
         [else
@@ -234,21 +247,25 @@ instructions refering to the same gensym variable
            (tpromise
             (tcomp-ext2-ρ (ensure-tpromise tp-t)
                           (ensure-tpromise tp-u)
-                          flat-f m n shape-fn)
+                          flat-f signature m n shape-fn)
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]))))
 
 (define scalar-shape
   (λ (s0 [s1 '()]) '()))
 
+;; See comment for tp-ext1-ρ
 (define tp-ext1-∇
-  (λ (f m [shape-fn scalar-shape])
+  (λ (f m
+        [shape-fn scalar-shape]
+        [expects-prealloc? #f]
+        [signature (format "~a" f)])
     (λ (tp zp)
       (cond
         ((number? tp) (f tp zp))
-        ((flat:expects-preallocated? f)
+        (expects-prealloc?
          (tpromise
-          (tcomp-ext1-∇ tp (ensure-tpromise zp) f m shape-fn)
+          (tcomp-ext1-∇ tp (ensure-tpromise zp) f signature m shape-fn)
           (tp-shape tp)))
         (else
          (let* ((in-shape (tpromise-shape tp))
@@ -256,18 +273,22 @@ instructions refering to the same gensym variable
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
            (tpromise
-            (tcomp-ext1-∇ tp (ensure-tpromise zp) flat-f m shape-fn)
+            (tcomp-ext1-∇ tp (ensure-tpromise zp) flat-f signature m shape-fn)
             (tp-shape tp))))))))
 
+;; See comment for tp-ext1-ρ
 (define tp-ext2-∇
-  (λ (f m n [shape-fn scalar-shape])
+  (λ (f m n
+        [shape-fn scalar-shape]
+        [expects-prealloc? #f]
+        [signature (format "~a" f)])
     (let ((tp-f
            (λ (f tp-t tp-u tp-z)
-             (tp-d-ext2^ f m n shape-fn
+             (tp-d-ext2^ f signature m n shape-fn
                          tp-t tp-u tp-z))))
       (λ (tp-t tp-u tp-z)
         (cond
-          ((flat:expects-preallocated? f)
+          (expects-prealloc?
            (tp-f f
                  (ensure-tpromise tp-t)
                  (ensure-tpromise tp-u)
@@ -284,13 +305,13 @@ instructions refering to the same gensym variable
 
 
 (define tp-d-ext2^
-  (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
-    (let* ((out0 (ext2-∇-result 'uncalculated))
-           (out1 (ext2-∇-result 'uncalculated)))
+  (λ (fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z)
+    (let* ((out0 'uncalculated)
+           (out1 'uncalculated))
       (values
-       (tpromise (tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 0)
+       (tpromise (tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 0)
                  (tp-shape tp-t0))
-       (tpromise (tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 1)
+       (tpromise (tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 1)
                  (tp-shape tp-t1))))))
 
 (define ensure-tpromise

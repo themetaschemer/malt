@@ -35,13 +35,13 @@
     (cdr st)))
 
 (define max-1
-  (prim1 max-1-ρ max-1-∇ max-shape))
+  (prim1 max-1-ρ max-1-∇ max-shape #t))
 
 (define d-max
   (ext1 max-1 1))
 
 (define max-ρ
-  (ext1-ρ max-1-ρ 1 max-shape))
+  (ext1-ρ max-1-ρ 1 max-shape #t))
 
 (include "test/test-F-max.rkt")
 

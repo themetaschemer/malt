@@ -27,13 +27,13 @@
     '()))
 
 (define argmax-1
-  (prim1 argmax-1-ρ argmax-1-∇ argmax-shape))
+  (prim1 argmax-1-ρ argmax-1-∇ argmax-shape #t))
 
 (define d-argmax
   (ext1 argmax-1 1))
 
 (define argmax-ρ
-  (ext1-ρ argmax-1-ρ 1 argmax-shape))
+  (ext1-ρ argmax-1-ρ 1 argmax-shape #t))
 
 (include "test/test-E-argmax.rkt")
 

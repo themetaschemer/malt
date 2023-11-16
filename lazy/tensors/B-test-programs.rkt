@@ -24,7 +24,70 @@
    'tensor-r2-0 (test-program-data
                  (λ ()
                    (tensor (tensor 1 2 3) (tensor 4 5 6)))
-                 (flat:tensor (flat:tensor 1 2 3) (flat:tensor 4 5 6)))))
+                 (flat:tensor (flat:tensor 1 2 3) (flat:tensor 4 5 6)))
+   'build-tensor-r2-0 (test-program-data
+                       (λ ()
+                         (build-tensor '(5 6)
+                                       (λ (i)
+                                         (match-define `(,x ,y) i)
+                                         (* 2.0 (+ (* x 6) y)))))
+                       (flat:build-tensor '(5 6)
+                                          (λ (i)
+                                            (match-define `(,x ,y) i)
+                                            (* 2.0 (+ (* x 6) y)))))
+   'build-tensor-r3-0 (test-program-data
+                       (λ ()
+                         (build-tensor '(2 3 4)
+                                       (λ (i)
+                                         (match-define `(,x ,y ,z) i)
+                                         (* 2 (+ (* x 12) (* y 4) (* 1 z))))))
+                       (flat:build-tensor '(2 3 4)
+                                          (λ (i)
+                                            (match-define `(,x ,y ,z) i)
+                                            (* 2 (+ (* x 12) (* y 4) (* 1 z))))))
+   'build-tensor-r3-1 (test-program-data
+                       (λ ()
+                         (build-tensor '(3 5 6)
+                                       (λ (i)
+                                         (match-define `(,x ,y ,z) i)
+                                         (* 2.0 (+ (* x 30) (* y 6) (* 1 z))))))
+                       (flat:build-tensor '(3 5 6)
+                                          (λ (i)
+                                            (match-define `(,x ,y ,z) i)
+                                            (* 2.0 (+ (* x 30) (* y 6) (* 1 z))))))
+   'extract-ds-once-tref (test-program-data
+                          (λ ()
+                            (let ((n (tref (get-test-program 'tensor-r1-0) 1)))
+                              (+-ρ n n)))
+                          4)
+   'extract-ds-once-trefs (test-program-data
+                           (λ ()
+                             (let ((tp (trefs (get-test-program 'tensor-r1-0) '(0 2))))
+                               (+-ρ tp tp)))
+                           (flat:tensor 2 6))
+   'built-tensor (test-program-data
+                  (λ ()
+                    (build-tensor test-build-shape
+                                  (λ (i)
+                                    (let ([row (car i)]
+                                          [column (cadr i)])
+                                      (+ (* (sub1 (car test-build-shape))
+                                            row)
+                                         column)))))
+                  (flat:tensor (flat:tensor 0 1 2)
+                               (flat:tensor 3 4 5)
+                               (flat:tensor 6 7 8)
+                               (flat:tensor 9 10 11)))
+   'multi-built-tensor (test-program-data
+                        (λ ()
+                          (+-ρ (get-test-program 'build-tensor-r2-0)
+                               (tref (get-test-program 'build-tensor-r3-1) 0)))
+                        ((flat:ext2-ρ * 0 0) 2 (flat:build-tensor '(5 6)
+                                                                  (λ (i)
+                                                                    (match-define `(,x ,y) i)
+                                                                    (* 2.0 (+ (* x 6) y))))))
+   ))
+
 (define get-test-program
   (λ (name)
     ((test-program-data-prog-thunk (hash-ref test-programs name)))))
@@ -40,16 +103,10 @@
                   ,(get-test-program 'tensor-r1-0)
                   ,(get-test-program 'tensor-r1-0))))
 (define test-build-shape '(4 3))
-(define test-built-tensor (build-tensor test-build-shape
-                                        (λ (i)
-                                          (let ([row (car i)]
-                                                [column (cadr i)])
-                                            (+ (* (sub1 (car test-build-shape))
-                                                  row)
-                                               column)))))
+
 (define test-refs '(0 2))
-(define test-trefs (trefs test-built-tensor test-refs))
-(define test-reshape (reshape '(3 2 1) (trefs test-built-tensor '(1 3))))
+(define test-trefs (trefs (get-test-program 'built-tensor) test-refs))
+(define test-reshape (reshape '(3 2 1) (trefs (get-test-program 'built-tensor) '(1 3))))
 
 (define sum-f
   (λ (in-v iᵢ sᵢ out-v iₒ sₒ)
@@ -57,7 +114,7 @@
             (for/fold ([sum 0.0]) ([i (in-range iᵢ (+ iᵢ sᵢ))])
               (+ sum (vref in-v i))))))
 
-(define sum (ext1-ρ sum-f 1))
+(define sum (ext1-ρ sum-f 1 (λ (s) '()) #t))
 (define test-tp-sum (sum (get-test-program 'tensor-r2-0)))
 (define test-tp-sum-nested (tensor 4.0 (sum (tensor 1 2 3)) 5.0))
 
@@ -67,10 +124,8 @@
 (define test-tp-id-scalar (id-ρ (sum (tensor 4 5 6))))
 
 (define t0
-  (build-tensor '(2 3 4)
-                  (λ (i)
-                    (match-define `(,x ,y ,z) i)
-                    (* 2 (+ (* x 12) (* y 4) (* 1 z))))))
+  (get-test-program 'build-tensor-r3-0))
+
 (define *-ρ (ext2-ρ * 0 0))
 (define t0sqr (*-ρ t0 t0))
 
@@ -82,26 +137,20 @@
                 (vref v1 (+ i1 (modulo j0 s1))))))))
 
 (define t1
-  (build-tensor '(5 6)
-                  (λ (i)
-                    (match-define `(,x ,y) i)
-                    (* 2.0 (+ (* x 6) y)))))
+  (get-test-program 'build-tensor-r2-0))
 
 (define t2
   (build-tensor '(6)
                   (λ (i) (* 3.0 (car i)))))
 
 (define *-2-1
-  (ext2-ρ *-2-1-f 2 1 (λ (s0 s1) s0)))
+  (ext2-ρ *-2-1-f 2 1 (λ (s0 s1) s0) #t))
 
 (define r-1-2
   (*-2-1 t1 t2))
 
 (define t3
-  (build-tensor '(3 5 6)
-                  (λ (i)
-                    (match-define `(,x ,y ,z) i)
-                    (* 2.0 (+ (* x 30) (* y 6) (* 1 z))))))
+  (get-test-program 'build-tensor-r3-1))
 
 (define t4
   (build-tensor '(3 6)
@@ -141,7 +190,7 @@
     (for* ([i (in-range it (+ it st))])
       (vset! g i (vref vz iz)))))
 
-(define sum-∇ (ext1-∇ sum-1-∇ 1 (λ (s) '())))
+(define sum-∇ (ext1-∇ sum-1-∇ 1 (λ (s) '()) #t))
 
 ;; t and u must have the same shape
 (define s2-f (lambda (t u) (tensor (sum t) (sum u))))
@@ -150,7 +199,7 @@
     (for* ([i (in-range it (+ it st))])
       (vset! g0 i (vref vz iz))
       (vset! g1 i (vref vz (+ iz 1))))))
-(define s2-∇ (ext2-∇ s2-d 1 1 (λ (s0 s1) (list 2))))
+(define s2-∇ (ext2-∇ s2-d 1 1 (λ (s0 s1) (list 2)) #t))
 
 (define test-env-flat-scalar
   ((λ (theta) (*-ρ (list-ref theta 0) (list-ref theta 1)))

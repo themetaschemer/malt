@@ -58,7 +58,8 @@
     (prim2
      (correlate-3-1-ρ nd md qd)
      (correlate-3-1-∇ nd md qd)
-     correlate-shape)))
+     correlate-shape
+     #t)))
 
 (define d-correlate
   (λ (bank signal)
@@ -82,7 +83,7 @@
            (q (/ (- m 1) 2)) ;; This is the padding.
            (qd (* q d))
            (md (* m d)))
-      ((ext2-ρ (correlate-3-1-ρ nd md qd) 3 1 correlate-shape)
+      ((ext2-ρ (correlate-3-1-ρ nd md qd) 3 1 correlate-shape #t)
        bank signal))))
 
 (define last

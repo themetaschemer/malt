@@ -55,10 +55,8 @@
                    vz
                    (+ offz iz)
                    stride-z)))
-           (set-ext2-∇-result-res! out0
-                     (scalarize (flat s0 g0 0)))
-           (set-ext2-∇-result-res! out1
-                     (scalarize (flat s1 g1 0)))))))))
+           (data-segment-set! out0 (scalarize (flat s0 g0 0)))
+           (data-segment-set! out1 (scalarize (flat s1 g1 0)))))))))
 
 (define rt:trefs
   (λ (ft b)
@@ -68,6 +66,10 @@
 
 (define data-segment
   (make-parameter #f))
+
+(define data-segment-set!
+  (λ (i v)
+    (vector-set! (data-segment) i v)))
 
 (define data-segment-ref
   (λ (i)
@@ -81,4 +83,4 @@
 (provide runtime flat? flat:build-tensor flat:list->tensor
          flat:tref rt:trefs (struct-out ext2-∇-result)
          ext2-∇-forcer scalarize flat-ext1-∇ ensure-flat flat-ext2-ρ
-         flat flat-store flat-offset flat-ext1-ρ)
+         flat flat-store flat-offset flat-ext1-ρ data-segment)

@@ -10,7 +10,6 @@
 (: s (Listof Natural)) ;; non-empty
 #;
 (: f (-> (Listof Natural) Number))
-(struct tcomp-build-tensor tcomp (s f) #:transparent)
 #;
 (: tp tpromise)
 #;
@@ -26,12 +25,12 @@
          (-> (Vector Number) Natural (Listof Natural)
              (Vector Number) Natural (Listof Natural)
              (Vector Number) Natural (Listof Natural))))
-(struct tcomp-ext1-ρ-scalar tcomp (f tp) #:transparent)
-(struct tcomp-ext1-ρ tcomp (f m shape-fn tp) #:transparent)
-(struct tcomp-ext2-ρ-scalar tcomp (f tp-t tp-u) #:transparent)
-(struct tcomp-ext2-ρ tcomp (tp-t tp-u f m n shape-fn) #:transparent)
-(struct tcomp-ext1-∇ tcomp (tp zp f m shape-fn) #:transparent)
-(struct tcomp-ext2-∇ tcomp (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+(struct tcomp-ext1-ρ-scalar tcomp (f sign tp) #:transparent)
+(struct tcomp-ext1-ρ tcomp (f sign m shape-fn tp) #:transparent)
+(struct tcomp-ext2-ρ-scalar tcomp (f sign tp-t tp-u) #:transparent)
+(struct tcomp-ext2-ρ tcomp (tp-t tp-u f sign m n shape-fn) #:transparent)
+(struct tcomp-ext1-∇ tcomp (tp zp f sign m shape-fn) #:transparent)
+(struct tcomp-ext2-∇ tcomp (fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
   #:transparent)
 (struct tcomp-reshape tcomp (s tp) #:transparent)
 (struct tcomp-let tcomp (lhs rhs body) #:transparent)
@@ -58,7 +57,6 @@
 
 (provide (struct-out tcomp)
          (struct-out tcomp-list->tensor)
-         (struct-out tcomp-build-tensor)
          (struct-out tcomp-tref)
          (struct-out tcomp-trefs)
          (struct-out tcomp-ext1-ρ-scalar)

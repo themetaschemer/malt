@@ -3,6 +3,7 @@
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 (require "c0-ast.rkt")
 (require (only-in "c3-compiler.rkt"
+                  compiler-cache
                   print-compiler?
                   get-compiled
                   compile-tensor))
@@ -17,9 +18,9 @@
       [(tpromise t _)
        #:when (or (flat:flat? t) (number? t) (tcomp? t))
 
-       (let-values (((instrs env)
+       (let-values (((instrs data-segment)
                      (compile-tensor t)))
-         (let ((res (interp-racket instrs env)))
+         (let ((res (interp-racket instrs data-segment)))
            (set-tpromise-tensor! tp res)
            res))]
       ;; NOTE: This case runs when we use tp-scalarize to turn
@@ -51,6 +52,6 @@
 
 (provide ↓ force*1 force*2)
 
-(provide print-compiler? get-compiled
+(provide print-compiler? compiler-cache get-compiled
          (rename-out
           (tp-scalarize scalarize)))

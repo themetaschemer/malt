@@ -80,9 +80,9 @@
   (flat:check-tensor-equal? (↓ test-tcomp-partial-eval)
                             (↓ (tensor 1 2 3)))
 
+  (define test-built-tensor (get-test-program 'built-tensor))
   (check-compiler-invariants test-built-tensor)
   (check-equal? (tpromise-shape test-built-tensor) test-build-shape)
-  (check-true (tcomp? (tpromise-tensor test-built-tensor)))
   (flat:check-tensor-equal? (↓ test-built-tensor)
                             (↓ (tensor (tensor 0 1 2)
                                        (tensor 3 4 5)
@@ -277,4 +277,9 @@
 
   (check-pred
    (λ (fs) (andmap (λ (e) (integer? (sqrt e))) fs))
-   (vector->list (flat:flat-store (↓ test-build-random)))))
+   (vector->list (flat:flat-store (↓ test-build-random)))
+   "Side-effect of generating random tensor must only be run once")
+
+  (flat:check-tensor-equal? (↓ (get-test-program 'multi-built-tensor))
+                            (get-test-eval-res 'multi-built-tensor))
+)
