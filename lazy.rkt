@@ -14,7 +14,7 @@
 
  ext1-ρ ext2-ρ ext1-∇ ext2-∇
 
- print-compiler?
+ print-compiler? compiler-cache
 
  dual dual? ρ κ ∇ ∇¹ (rename-out (∇ gradient-of)) map*
 

@@ -36,7 +36,7 @@
               (vector-ref vz (+ iz i)))))))))
 
 (define concat-base
-  (prim2 concat-base-ρ concat-base-∇ concat-shape))
+  (prim2 concat-base-ρ concat-base-∇ concat-shape #t))
 
 (define d-concat-n
   (λ (n)

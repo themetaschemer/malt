@@ -23,13 +23,13 @@
     (refr st 1)))
 
 (define sum-1
-  (prim1 sum-1-ρ sum-1-∇ sum-shape))
+  (prim1 sum-1-ρ sum-1-∇ sum-shape #t))
 
 (define d-sum
   (ext1 sum-1 1))
 
 (define sum-ρ
-  (ext1-ρ sum-1-ρ 1 sum-shape))
+  (ext1-ρ sum-1-ρ 1 sum-shape #t))
 
 (provide d-sum sum-ρ)
 
@@ -54,13 +54,13 @@
     (refr s 1)))
 
 (define sum-cols-2
-  (prim1 sum-cols-2-ρ sum-cols-2-∇ sum-cols-shape))
+  (prim1 sum-cols-2-ρ sum-cols-2-∇ sum-cols-shape #t))
 
 (define d-sum-cols
   (ext1 sum-cols-2 2))
 
 (define sum-cols-ρ
-  (ext1-ρ sum-cols-2-ρ 2 sum-cols-shape))
+  (ext1-ρ sum-cols-2-ρ 2 sum-cols-shape #t))
 
 (include "test/test-D-sum.rkt")
 

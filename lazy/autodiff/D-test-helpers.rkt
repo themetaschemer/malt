@@ -5,10 +5,6 @@
 
 (require rackunit)
 
-(define forced-ρ
-  (λ (d)
-    (↓ (ρ d))))
-
 (define-binary-check (check-dual-equal? equal-wt? actual expected))
 (define-check (ρ-∇-checker fn args ans grads)
   (let* ((y (↓ (apply fn args)))

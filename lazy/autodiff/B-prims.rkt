@@ -3,24 +3,7 @@
 (require "../tensors.rkt")
 (require "A-autodiff.ss")
 
-(define ρ-function
-  (λ (f) (f ρ-function)))
-
-(define ∇-function
-  (λ (f) (f ∇-function)))
-
-(define shape-fn
-  (λ (f) (f shape-fn)))
-
-;;TODO: make prim1 and prim2 func-callable structures using the prop:procedure
-;;struct property
-
-(struct prim (ρ-fn ∇-fn shape-fn
-                     signature ;;autogenerate this before runtime to avoid
-                               ;;changing this during runtime
-                     proc ;; This will be the prim*-dual func
-                     prealloc? ;; use this to redefine expects-preallocated?
-                     )
+(struct prim (ρ-fn ∇-fn shape-fn signature expects-prealloc? proc)
   #:property prop:procedure (λ (this . args)
                               (apply (prim-proc this) args)))
 
@@ -30,13 +13,11 @@
 ;;prims
 
 (define prim1
-  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
-    (λ (daf)
-      (cond
-        ((eq? daf ρ-function) ρ-fn)
-        ((eq? daf ∇-function) ∇-fn)
-        ((eq? daf shape-fn) shape)
-        (else (prim1-dual ρ-fn ∇-fn daf))))))
+  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
+    (let ((prim-sign (symbol->string (gensym 'prim1))))
+      (prim ρ-fn ∇-fn shape prim-sign expects-prealloc?
+            (λ (da)
+              (prim1-dual ρ-fn ∇-fn da))))))
 
 (define prim1-dual
   (λ (ρ-fn ∇-fn da)
@@ -48,14 +29,11 @@
                      ((κ da) da ga σ))))))))
 
 (define prim2
-  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
-    (λ ds
-      (let ((daf (ref ds 0)))
-        (cond
-          ((eq? daf ρ-function) ρ-fn)
-          ((eq? daf ∇-function) ∇-fn)
-          ((eq? daf shape-fn) shape)
-          (else (prim2-dual ρ-fn ∇-fn daf (ref ds 1))))))))
+  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
+    (let ((prim-sign (symbol->string (gensym 'prim2))))
+      (prim ρ-fn ∇-fn shape prim-sign expects-prealloc?
+            (λ (da db)
+              (prim2-dual ρ-fn ∇-fn da db))))))
 
 (define prim2-dual
   (λ (ρ-fn ∇-fn da db)
@@ -73,16 +51,26 @@
 ;;----------------------------
 (define ext1
   (λ (f n)
+    (unless (prim? f)
+      (error 'ext1-prim "Function to be extended must be a primitive. Found: ~a" f))
     (prim1
-     (ext1-ρ (ρ-function f) n (shape-fn f))
-     (ext1-∇ (∇-function f) n (shape-fn f))
-     (shape-fn f))))
+     (ext1-ρ (prim-ρ-fn f) n (prim-shape-fn f)
+             (prim-expects-prealloc? f) (prim-signature f))
+     (ext1-∇ (prim-∇-fn f) n (prim-shape-fn f)
+             (prim-expects-prealloc? f) (prim-signature f))
+     (prim-shape-fn f)
+     #f)))
 
 (define ext2
   (λ (f m n)
+    (unless (prim? f)
+      (error 'ext2-prim "Function to be extended must be a primitive. Found: ~a" f))
     (prim2
-     (ext2-ρ (ρ-function f) m n (shape-fn f))
-     (ext2-∇ (∇-function f) m n (shape-fn f))
-     (shape-fn f))))
+     (ext2-ρ (prim-ρ-fn f) m n (prim-shape-fn f)
+             (prim-expects-prealloc? f) (prim-signature f))
+     (ext2-∇ (prim-∇-fn f) m n (prim-shape-fn f)
+             (prim-expects-prealloc? f) (prim-signature f))
+     (prim-shape-fn f)
+     #f)))
 
 (provide prim1 prim2 ext1 ext2)

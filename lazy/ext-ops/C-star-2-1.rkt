@@ -30,7 +30,7 @@
     s))
 
 (define *-2-1
-  (prim2 *-2-1-base-ρ *-2-1-base-∇ *-2-1-shape))
+  (prim2 *-2-1-base-ρ *-2-1-base-∇ *-2-1-shape #t))
 
 (define d*-2-1
   (ext2 *-2-1 2 1))

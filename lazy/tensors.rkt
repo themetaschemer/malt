@@ -14,7 +14,7 @@
 
 (provide ↓ scalarize)
 
-(provide print-compiler?)
+(provide print-compiler? compiler-cache)
 
 ;; These will get overriden by duals
 (provide tensor?)
