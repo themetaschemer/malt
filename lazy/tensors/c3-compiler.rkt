@@ -124,26 +124,22 @@
 
 (define hash-signatures?
   (make-parameter #f))
-;;TODO: Optimize sign by replacing it with this commented function
-#;
+
 (define sign
   (let ((xxh32-ctx (make-xxh32)))
     (λ ss
       (cond
         ((hash-signatures?)
          (xxh32-reset! xxh32-ctx 0)
-         (xxh32-update! xxh32-ctx (apply bytes-append ss))
+         (xxh32-update! xxh32-ctx (apply bytes-join ss #"_"))
          (xxh32-digest xxh32-ctx))
         (else (format "~a" ss))))))
-(define sign
-  (let ((xxh32-ctx (make-xxh32)))
-    (λ (s)
-      (cond
-        ((hash-signatures?)
-         (xxh32-reset! xxh32-ctx 0)
-         (xxh32-update! xxh32-ctx (string->bytes/utf-8 s))
-         (format "~a" (xxh32-digest xxh32-ctx)))
-        (else (format "~a" s))))))
+
+(define number->bytes
+  (λ (n)
+    (string->bytes/utf-8 (number->string n))))
+
+(define string->bytes string->bytes/utf-8)
 
 (define generate-signature
   (λ (t)
@@ -153,7 +149,7 @@
   (λ (t)
     (match t
       (s #:when (number? s)
-        (sign (format "s~a" s)))
+        (sign #"s~a" (number->bytes s)))
       ((tpromise tc _) (gs-expr tc))
       ((tcomp) (gs-tcomp t)))))
 
@@ -161,61 +157,32 @@
   (λ (tc)
     (match tc
       [(tcomp-list->tensor lst)
-       (let ((list-sig
-              (for/fold ((sig ""))
-                        ((l lst)
-                         (i (in-naturals 0)))
-                (string-append sig (gs-expr l)))))
-         (sign (format "l>t~a" list-sig)))]
-
+       (apply sign #"l>t" (map gs-expr lst))]
       [(tcomp-tref tp i)
-       (sign
-        (format "tr~a~a" (gs-expr tp) (gs-expr i)))]
+       (sign "tr" (gs-expr tp) (gs-expr i))]
       [(tcomp-trefs tp b)
-       (sign
-        (format "trs~a~a" (gs-expr tp) (gs-expr b)))]
+       (sign #"trs" (gs-expr tp) (gs-expr b))]
       [(tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
-       (sign
-        (format "e2∇~a~a_~a~a~a~a~a~a~a~a"
-                signature r0 r1 shape-fn
-                (gs-expr tp-t0)
-                (gs-expr tp-t1)
-                (gs-expr tp-z)
-                out0 out1
-                i))]
+       (sign #"e2n" (string->bytes signature)
+             (number->bytes r0) (number->bytes r1)
+             (gs-expr tp-t0) (gs-expr tp-t1) (gs-expr tp-z)
+             (number->bytes out0) (number->bytes out1) (number->bytes i))]
       [(tcomp-ext1-∇ tp zp f signature m shape-fn)
-       (sign
-        (format "e1∇~a~a~a~a~a"
-                signature m shape-fn
-                (gs-expr tp)
-                (gs-expr zp)))]
+       (sign #"e1n" (string->bytes signature) (number->bytes m)
+             (gs-expr tp) (gs-expr zp))]
       [(tcomp-ext2-ρ-scalar f signature tp-t tp-u)
-       (sign
-        (format "e2ρs~a~a~a"
-                signature
-                (gs-expr tp-t)
-                (gs-expr tp-u)))]
+       (sign #"e2rs" (string->bytes signature) (gs-expr tp-t) (gs-expr tp-u))]
       [(tcomp-ext2-ρ tp-t tp-u f signature m n shape-fn)
-       (sign
-        (format "e2ρ~a~a_~a~a~a~a"
-                signature m n shape-fn
-                (gs-expr tp-t)
-                (gs-expr tp-u)))]
+       (sign #"e2r" (string->bytes signature) (number->bytes m) (number->bytes m)
+             (gs-expr tp-t) (gs-expr tp-u))]
       [(tcomp-ext1-ρ-scalar f signature tp)
-       (sign
-        (format "e1ρs~a~a" signature (gs-expr tp)))]
+       (sign #"e1rs" (string->bytes signature) (gs-expr tp))]
       [(tcomp-ext1-ρ f signature m shape-fn tp)
-       (sign
-        (format "e1ρ~a~a~a~a"
-                signature m shape-fn
-                (gs-expr tp)))]
+       (sign #"e1r" (string->bytes signature) (number->bytes m) (gs-expr tp))]
       [(tcomp-reshape s tp)
-       (sign
-        (format "r~a~a"
-                s (gs-expr tp)))]
+       (apply sign #"r" gs-expr tp) (map number->bytes s)]
       [(tcomp-ds-ref index)
-       (sign
-        (format "dsr~a" index))])))
+       (sign #"dsr" index)])))
 
 ;; Count references so that the tcomp AST nodes that refer to the same memory
 ;; location i.e. common AST nodes get extracted by let-binding them in the
