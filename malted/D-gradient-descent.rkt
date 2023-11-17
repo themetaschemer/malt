@@ -17,7 +17,7 @@
     (λ (obj theta)
       (let ((ctr 0))
         (let ((f (λ (big-theta)
-                   (map update
+                   (map (λ (pa g) (map* ↓ (update pa g)))
                      big-theta
                      (gradient-of obj
                        (map deflate big-theta))))))
