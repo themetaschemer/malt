@@ -123,7 +123,7 @@
            (values (tcomp-reshape s tp^) dss^))])))
 
 (define hash-signatures?
-  (make-parameter #f))
+  (make-parameter #t))
 
 (define sign
   (let ((xxh32-ctx (make-xxh32)))
@@ -131,8 +131,8 @@
       (cond
         ((hash-signatures?)
          (xxh32-reset! xxh32-ctx 0)
-         (xxh32-update! xxh32-ctx (apply bytes-join ss #"_"))
-         (xxh32-digest xxh32-ctx))
+         (xxh32-update! xxh32-ctx (bytes-join ss #"_"))
+         (number->bytes (xxh32-digest xxh32-ctx)))
         (else (format "~a" ss))))))
 
 (define number->bytes
@@ -159,7 +159,7 @@
       [(tcomp-list->tensor lst)
        (apply sign #"l>t" (map gs-expr lst))]
       [(tcomp-tref tp i)
-       (sign "tr" (gs-expr tp) (gs-expr i))]
+       (sign #"tr" (gs-expr tp) (gs-expr i))]
       [(tcomp-trefs tp b)
        (sign #"trs" (gs-expr tp) (gs-expr b))]
       [(tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
@@ -180,9 +180,9 @@
       [(tcomp-ext1-ρ f signature m shape-fn tp)
        (sign #"e1r" (string->bytes signature) (number->bytes m) (gs-expr tp))]
       [(tcomp-reshape s tp)
-       (apply sign #"r" gs-expr tp) (map number->bytes s)]
+       (apply sign #"r" (gs-expr tp) (map number->bytes s))]
       [(tcomp-ds-ref index)
-       (sign #"dsr" index)])))
+       (sign #"dsr" (number->bytes index))])))
 
 ;; Count references so that the tcomp AST nodes that refer to the same memory
 ;; location i.e. common AST nodes get extracted by let-binding them in the
