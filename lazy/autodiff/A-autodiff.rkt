@@ -61,8 +61,7 @@
 (define ∇
   (λ (f theta)
     (let ((wrt (map* dual* theta)))
-      ;; TODO: try forcing (f wrt) to see if it fixes caching issues
-      (∇-once (f wrt) #;(↓ (f wrt)) wrt))))
+      (∇-once (f wrt) wrt))))
 
 (define ∇¹
   (λ (f)
