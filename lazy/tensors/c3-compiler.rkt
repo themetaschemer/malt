@@ -4,6 +4,7 @@
 (require (only-in "c2-interpreter.rkt" interp-tensor interp-racket))
 (require "../../flat-tensors/ext-impl.rkt")
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
+(require (only-in "c1-racket-runtime.rkt" runtime))
 (require rackunit)
 (require file/xxhash32)
 
@@ -530,10 +531,16 @@
              (display-compiler-trace 'Count-References counter)
              (let ((extracted (extract-common-subexpressions eds-instrs counter)))
                (display-compiler-trace 'Extract-Common-Subexpressions extracted)
-               (let ((rkt (generate-racket extracted)))
-                 (display-compiler-trace 'Generate-Racket rkt)
+               (let* ((gr (generate-racket extracted))
+                      (rkt (compile-racket gr)))
+                 (display-compiler-trace 'Generate-Racket gr)
                  (hash-set! (cache) signature rkt)
                  (values rkt ds))))))))))
+
+(define compile-racket
+  (λ (r)
+    (parameterize ([current-namespace runtime])
+      (compile-syntax (expand r)))))
 
 ;;TODO: update this for new compiler passes
 (define compile-tensor/checks
