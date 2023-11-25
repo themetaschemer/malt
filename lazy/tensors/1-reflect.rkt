@@ -10,16 +10,14 @@
 (require (only-in "c2-interpreter.rkt" interp-racket))
 
 (define ↓
-  (lambda (tp (print? #f))
-    (when print?
-      (printf "~n####PP tensor: ")
-      (pretty-print tp))
+  (lambda (tp)
     (match tp
+      [(tpromise v _)
+       #:when (or (flat:flat? v) (number? v))
+       v]
       [(tpromise t _)
-       #:when (or (flat:flat? t) (number? t) (tcomp? t))
-
-       (let-values (((instrs data-segment)
-                     (compile-tensor t)))
+       #:when (tcomp? t)
+       (let-values (((instrs data-segment) (compile-tensor t)))
          (let ((res (interp-racket instrs data-segment)))
            (set-tpromise-tensor! tp res)
            res))]
