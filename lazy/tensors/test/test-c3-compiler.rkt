@@ -34,6 +34,7 @@
             (fail-check "signatures musn't match"))))))
 
   (define test-tensor-r1-1 (get-test-program 'tensor-r1-1))
+  (define test-tcomp-tref (get-test-program 'tcomp-tref))
   (check-signatures-equal? test-tcomp-tref
                            (make-tref-test-program test-tensor-r1-1))
   (check-signatures-not-equal? test-tcomp-tref
