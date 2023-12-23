@@ -58,17 +58,6 @@ instructions refering to the same gensym variable
   (λ args
     (list->tpromise args)))
 #;
-(: tensor-inner-flat (-> (Listof (U tpromise Number))
-                       (U flat tcomp-list->tensor)))
-(define tensor-inner-flat
-  (λ (lst)
-    (cond
-     [(andmap number? lst) (apply flat:tensor lst)]
-     [(andmap (λ (v) (and (tpromise? v) (flat:flat? (tpromise-tensor v)))) lst)
-      (apply flat:tensor (map tpromise-tensor lst))]
-     [else (tcomp-list->tensor lst)])))
-
-#;
 (: ensure-shape (-> (U (Listof tpromise) (Listof Number)) Void))
 (define ensure-shape
   (λ (args)
@@ -98,18 +87,31 @@ instructions refering to the same gensym variable
                "Cannot construct a tensor out of these elements: ~a~%"
                args)))))
 
+#;
+(: tensor-inner-flat (-> (Listof (U tpromise Number))
+                       (U flat tcomp-list->tensor)))
+(define tensor-inner-flat
+  (λ (lst)
+    (cond
+     [(andmap number? lst) (apply flat:tensor lst)]
+     [(andmap tpromise-flat? lst)
+      (apply flat:tensor
+             (for/list ((tp-flat lst))
+               (car (unbox (tpromise-dst tp-flat)))))]
+     [else lst])))
+
 (define list->tpromise
   (λ (lst)
     (ensure-shape lst)
-    (let ((inner-flat (tensor-inner-flat lst)))
+    (let ((inner-tensor (tensor-inner-flat lst)))
       (cond
-        ((flat? inner-flat)
-         (tpromise inner-flat (flat-shape inner-flat)))
+        ((flat? inner-tensor)
+         (tpmake-flat inner-tensor))
         (else
          (let* ((inner-shape (tp-shape (car lst)))
                 (outer (length lst))
                 (new-shape (cons outer inner-shape)))
-           (tpromise inner-flat new-shape)))))))
+           (tpmake-list->tensor inner-tensor new-shape)))))))
 
 (define bounded-idx*^
   (λ (shape idx*)
@@ -129,8 +131,7 @@ instructions refering to the same gensym variable
   (lambda (tp i)
     (cond
       [(bounded-idx*? tp (list i))
-       (tpromise (tcomp-tref tp i)
-                 (cdr (tpromise-shape tp)))]
+       (tpmake-tref tp i (cdr (tpromise-shape tp)))]
       [else (error 'exn:tp-tref
                    (string-append
                     "Index out of bounds. ~a "
@@ -150,7 +151,7 @@ instructions refering to the same gensym variable
 
 (define build-tpromise
   (λ (s f)
-    (tpromise (flat:build-tensor s f) s)))
+    (tpmake-flat (flat:build-tensor s f))))
 
 (define tp-trefs
   (λ (tp b)
@@ -162,9 +163,9 @@ instructions refering to the same gensym variable
        (error 'tp-trefs
               "An index was out of bounds")]
       [else
-       (tpromise (tcomp-trefs tp b)
-                 `(,(length b)
-                   . ,(cdr (tpromise-shape tp))))])))
+       (tpmake-trefs tp b
+                     `(,(length b)
+                       . ,(cdr (tpromise-shape tp))))])))
 
 ;; Default arguments shape-fn and expects-prealloc? need not be passed when f is
 ;; a function on scalars and doesn't expect a preallocated output vector as its
@@ -176,33 +177,20 @@ instructions refering to the same gensym variable
         [expects-prealloc? #f]
         [signature (format "~a" f)])
     (λ (tp)
-      (cond
-        [(scalar? tp) (f tp)]
-        [(and (tpromise? tp)
-              (null? (tpromise-shape tp)))
-         (tpromise
-          (tcomp-ext1-ρ-scalar f signature tp)
-          '())]
-        [expects-prealloc?
-         (tpromise
-          (tcomp-ext1-ρ f signature m shape-fn tp)
-          (merge-shapes
-           (tp-shape tp)
-           m
-           (shape-fn
-            (min-shape m (tp-shape tp)))))]
-        [else
-         (let* ((in-shape (tpromise-shape tp))
-                (base-shape (min-shape m in-shape))
-                (out-shape (shape-fn base-shape))
-                (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
-           (tpromise
-            (tcomp-ext1-ρ flat-f signature m shape-fn tp)
-            (merge-shapes
-             (tp-shape tp)
-             m
-             (shape-fn
-              (min-shape m (tp-shape tp))))))]))))
+      (let* ((in-shape (tp-shape tp))
+             (base-shape (min-shape m in-shape))
+             (shape-fn-out (shape-fn base-shape))
+             (out-shape (merge-shapes in-shape m shape-fn-out)))
+        (cond
+          [(scalar? tp) (f tp)]
+          [(and (tpromise? tp)
+                (null? (tpromise-shape tp)))
+           (tpmake-ext1-ρ-scalar f signature tp out-shape)]
+          [expects-prealloc?
+           (tpmake-ext1-ρ f signature m shape-fn tp out-shape)]
+          [else
+           (let ((flat-f (functional->preallocated-1-ρ f base-shape shape-fn-out)))
+             (tpmake-ext1-ρ flat-f signature m shape-fn tp out-shape))])))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-ρ
@@ -211,23 +199,25 @@ instructions refering to the same gensym variable
         [expects-prealloc? #f]
         [signature (format "~a" f)])
     (λ (tp-t tp-u)
+      ;; TODO: Refactor out the code to compute the shape like in tp-ext1-ρ
       (cond
         ((and (number? tp-t) (number? tp-u))
          (f tp-t tp-u))
         [(and (tpromise? tp-t) (tpromise? tp-u)
               (null? (tpromise-shape tp-t))
               (null? (tpromise-shape tp-u)))
-         (tpromise (tcomp-ext2-ρ-scalar f signature tp-t tp-u) '())]
+         ;; TODO: Fix the shape being used by using ext2-shapes
+         (tpmake-ext2-ρ-scalar f signature tp-t tp-u '())]
         [expects-prealloc?
          (let* ((s0 (tp-shape tp-t))
                 (s1 (tp-shape tp-u))
                 (sf0 (min-shape m s0))
                 (sf1 (min-shape n s1))
                 (sf-out (shape-fn sf0 sf1)))
-           (tpromise
-            (tcomp-ext2-ρ (ensure-tpromise tp-t)
-                          (ensure-tpromise tp-u)
-                          f signature m n shape-fn)
+           (tpmake-ext2-ρ
+            (ensure-tpromise tp-t)
+            (ensure-tpromise tp-u)
+            f signature m n shape-fn
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]
         [else
@@ -244,10 +234,10 @@ instructions refering to the same gensym variable
                          t-shape
                          u-shape
                          out-shape)))
-           (tpromise
-            (tcomp-ext2-ρ (ensure-tpromise tp-t)
-                          (ensure-tpromise tp-u)
-                          flat-f signature m n shape-fn)
+           (tpmake-ext2-ρ
+            (ensure-tpromise tp-t)
+            (ensure-tpromise tp-u)
+            flat-f signature m n shape-fn
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]))))
 
@@ -261,20 +251,26 @@ instructions refering to the same gensym variable
         [expects-prealloc? #f]
         [signature (format "~a" f)])
     (λ (tp zp)
+      ;; we invoke ensure-tpromise on just zp because it's the result of calling
+      ;; force*1 which forces zp to be a non-tpromise value. We can ensure tp to
+      ;; be a tpromise as well, but currently in our workflow we never force tp
+      ;; before passing it to this function.
+      ;;
       (cond
         ((number? tp) (f tp zp))
         (expects-prealloc?
-         (tpromise
-          (tcomp-ext1-∇ tp (ensure-tpromise zp) f signature m shape-fn)
-          (tp-shape tp)))
+         (tpmake-ext1-∇ (ensure-tpromise tp)
+                        (ensure-tpromise zp)
+                        f signature m shape-fn
+                        (tp-shape tp)))
         (else
          (let* ((in-shape (tpromise-shape tp))
                 (base-shape (min-shape m in-shape))
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-           (tpromise
-            (tcomp-ext1-∇ tp (ensure-tpromise zp) flat-f signature m shape-fn)
-            (tp-shape tp))))))))
+           (tpmake-ext1-∇ (ensure-tpromise tp)
+                          (ensure-tpromise zp) flat-f signature m shape-fn
+                          (tp-shape tp))))))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-∇
@@ -303,21 +299,21 @@ instructions refering to the same gensym variable
                         (ensure-tpromise tp-u)
                         (ensure-tpromise tp-z)))])))))
 
-
 (define tp-d-ext2^
   (λ (fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z)
-    (let* ((out0 'uncalculated)
-           (out1 'uncalculated))
+    (let* ((out-ref0 (ext2-∇-result (tcomp-ds-ref #f)))
+           (out-ref1 (ext2-∇-result (tcomp-ds-ref #f))))
       (values
-       (tpromise (tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 0)
-                 (tp-shape tp-t0))
-       (tpromise (tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 1)
-                 (tp-shape tp-t1))))))
+       (tpmake-ext2-∇ fᵈ sign r0 r1 shape-fn
+                      tp-t0 tp-t1 tp-z out-ref0 out-ref1 0 (tp-shape tp-t0))
+       (tpmake-ext2-∇ fᵈ sign r0 r1 shape-fn
+                      tp-t0 tp-t1 tp-z out-ref0 out-ref1 1 (tp-shape tp-t1))))))
 
 (define ensure-tpromise
   (λ (v)
     (cond
-      ((scalar? v) (tpromise (ensure-flat v) '()))
+      ((scalar? v) (tpmake-flat (ensure-flat v)))
+      ((flat? v) (tpmake-flat v))
       (else v))))
 
 (define tp-rank
@@ -328,7 +324,7 @@ instructions refering to the same gensym variable
   (λ (s tp)
     (cond
       ((= (flat:size-of s) (flat:size-of (tpromise-shape tp)))
-       (tpromise (tcomp-reshape s tp) s))
+       (tpmake-reshape tp s))
       (else (error 'shape-error "Cannot reshape ~a to ~a~%" (tpromise-shape tp) s)))))
 
 (define tensor?

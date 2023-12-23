@@ -77,7 +77,7 @@
 (define interp-tensor-expr
   (λ (t env ds)
     (match t
-      [(tpromise tc _) (interp-tensor-expr tc env ds)]
+      [(tpromise tc _ _ _) (interp-tensor-expr tc env ds)]
       [v #:when (or (flat? v) (pair? v) (number? v)) v]
       [(tcomp) (interp-tensor-tcomp t env ds)])))
 

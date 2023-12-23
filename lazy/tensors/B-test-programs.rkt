@@ -137,9 +137,10 @@
                         (eval-res-1 (flat:tensor 5 6 7 8)))
    'tcomp-nested-list->tensor (test-program-data
                                (λ ()
-                                 (list->tensor `(,(get-test-program 'tensor-r1-0)
-                                                 ,(get-test-program 'tensor-r1-0)
-                                                 ,(get-test-program 'tensor-r1-0))))
+                                 (list->tensor
+                                  `(,(get-test-program 'tensor-r1-0)
+                                    ,(get-test-program 'tensor-r1-0)
+                                    ,(get-test-program 'tensor-r1-0))))
                                (eval-res-1 (flat:tensor
                                             (flat:tensor 1 2 3)
                                             (flat:tensor 1 2 3)
@@ -176,6 +177,10 @@
                (λ ()
                  (id-ρ (sum (tensor 4 5 6))))
                (eval-res-1 15))
+   'abs-scalar (test-program-data
+                (λ ()
+                  (abs-ρ (tref (tensor 4 -5 6) 1)))
+                (eval-res-1 5))
    'sqr (test-program-data
          (λ ()
            (*-ρ (get-test-program 'build-tensor-r3-0)
@@ -344,7 +349,7 @@
 (define sum (ext1-ρ sum-f 1 (λ (s) '()) #t))
 
 (define id-f (lambda (v) v))
-(define id-ρ (ext1-ρ id-f 1 (λ (s) s)))
+(define id-ρ (ext1-ρ id-f 0 (λ (s) s)))
 
 (define *-ρ (ext2-ρ * 0 0))
 

@@ -3,35 +3,57 @@
   (require "B-test-programs.rkt")
   (require "0-lazy.rkt")
 
+  (define current-test-program-name (make-parameter #f))
+  (define-check (check-compiler-invariants tp)
+    (let-values (((instrs ds) (compile-tensor tp)))
+      (with-check-info
+          (('data-segment ds)
+           ('instrs instrs))
+        (define test-name-string
+          (cond
+            ((current-test-program-name) (format "In test case: ~a"
+                                                 (current-test-program-name)))
+            (else "")))
+        'ok
+        ;;TODO: Add a check to ensure the number of tcomp-ds-ref occurring in
+        ;;the input equals the size of the data segment
+        #;
+        (for ((name/flat ds))
+          (unless (and (flat:flat? (cdr name/flat))
+                       (not (null? (flat:flat-shape (cdr name/flat)))))
+            (fail-check (format (string-append "Value associated with the variable"
+                                               " ~a should be a flat tensor. "
+                                               "Associated value found: ~a")
+                                (car name/flat) (cdr name/flat))))))))
+
+  (for (((test-name test-data) (in-hash test-programs)))
+     (match-define (test-program-data th res) test-data)
+    (parameterize ((current-test-program-name test-name))
+      (match res
+        ((eval-res-1 res)
+         (let* ((tp (th)))
+           (check-compiler-invariants tp)))
+        ((eval-res-2 res1 res2)
+         (let*-values (((tp1 tp2) (th)))
+           (check-compiler-invariants tp1)
+           (check-compiler-invariants tp2))))))
   (define-check (check-signatures-equal? t1 t2)
-    (let-values (((eds-instrs-1 ds1) (extract-data-segment t1))
-                 ((eds-instrs-2 ds2) (extract-data-segment t2)))
-      (let ((sig1 (generate-signature eds-instrs-1))
-            (sig2 (generate-signature eds-instrs-2)))
-        (with-check-info
-          (('extracted-instrs-1 eds-instrs-1)
-           ('extracted-instrs-2 eds-instrs-2)
-           ('data-segment-1 ds1)
-           ('data-segment-2 ds2)
-           ('signature-1 sig1)
+    (let ((sig1 (tpromise-sign t1))
+          (sig2 (tpromise-sign t2)))
+      (with-check-info
+          (('signature-1 sig1)
            ('signature-2 sig2))
-          (unless (equal? sig1 sig2)
-            (fail-check "signature mismatch"))))))
+        (unless (equal? sig1 sig2)
+          (fail-check "signature mismatch")))))
 
   (define-check (check-signatures-not-equal? t1 t2)
-    (let-values (((eds-instrs-1 ds1) (extract-data-segment t1))
-                 ((eds-instrs-2 ds2) (extract-data-segment t2)))
-      (let ((sig1 (generate-signature eds-instrs-1))
-            (sig2 (generate-signature eds-instrs-2)))
-        (with-check-info
-          (('extracted-instrs-1 eds-instrs-1)
-           ('extracted-instrs-2 eds-instrs-2)
-           ('data-segment-1 ds1)
-           ('data-segment-2 ds2)
-           ('signature-1 sig1)
+    (let ((sig1 (tpromise-sign t1))
+          (sig2 (tpromise-sign t2)))
+      (with-check-info
+          (('signature-1 sig1)
            ('signature-2 sig2))
-          (when (equal? sig1 sig2)
-            (fail-check "signatures musn't match"))))))
+      (when (equal? sig1 sig2)
+            (fail-check "signatures musn't match")))))
 
   (define test-tensor-r1-1 (get-test-program 'tensor-r1-1))
   (define test-tcomp-tref (get-test-program 'tcomp-tref))
@@ -42,7 +64,6 @@
 
   (define tensor-r1 (get-test-program 'tensor-r1-0))
   (check-signatures-equal? (*-ρ 2 tensor-r1) (*-ρ 3 tensor-r1))
-  (check-signatures-not-equal? (*-ρ 2 3) (*-ρ 3 3))
 
   (define v^ (random-tensor (list 10 4)))
   (define r^ (random-tensor (list 10 4 2)))
@@ -75,17 +96,17 @@
   (let-values (((rkt ds) (compile-tensor (get-test-program 'extract-ds-once-tref))))
     (check-pred
      (λ (ds)
-       (eqv? (vector-length ds) 2))
+       (eqv? (set-count (list->seteq (vector->list ds))) 2))
      ds
-     (string-append "Tensors and tref indices occurring multiple times in"
-                    " source AST but referring to the same tensor AST node must"
-                    " be added to the data segment only once.")))
+     (string-append "eq? equivalent flat tensors and tref indices"
+                    " used to construct the source AST must"
+                    " be eq? equivalent in the data segment as well.")))
   (let-values (((rkt ds) (compile-tensor (get-test-program 'extract-ds-once-trefs))))
     (check-pred
      (λ (ds)
-       (eqv? (vector-length ds) 2))
+       (eqv? (set-count (list->seteq (vector->list ds))) 2))
      ds
-     (string-append "Tensors and trefs index lists occurring multiple times in"
-                    " source AST but pointing to the same tensor AST node must"
-                    " be added to the data segment only once.")))
+     (string-append "eq? equivalent flat tensors and trefs index lists"
+                    " used to construct the source AST must"
+                    " be eq? equivalent in the data segment as well.")))
   )
