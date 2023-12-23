@@ -1,35 +1,12 @@
 (module+ test
   (require rackunit)
-  (require (only-in "c3-compiler.rkt"
-                    compile-tensor/checks))
   (require "0-lazy.rkt")
   (require "B-test-programs.rkt")
-  ;; TODO: Add a comment above each test case describing what the test case is testing
-  (define-check (check-compiler-invariants tp)
-    (let-values (((instrs ds) (compile-tensor tp)))
-      (with-check-info
-          (('data-segment ds)
-           ('instrs instrs))
-        'ok
-        #;
-        (for ((name/flat ds))
-          (unless (and (flat:flat? (cdr name/flat))
-                       (not (null? (flat:flat-shape (cdr name/flat)))))
-            (fail-check (format (string-append "Value associated with the variable"
-                                               " ~a should be a flat tensor. "
-                                               "Associated value found: ~a")
-                                (car name/flat) (cdr name/flat)))))
-        #;
-        (define unique-flats (list->seteq (map cdr ds)))
-        #;
-        (unless (equal? (set-count unique-flats)
-                        (length (filter flat? (map cdr ds))))
-          (fail-check (string-append "Duplicate flat tensors found"
-                                     " in data segment. Variables in data segment"
-                                     " should be paired with unique"
-                                     " flat tensors"))))))
-  ;;TODO: Move all check-compiler-invariant checks to the test file for
-  ;;c3-compiler.rkt file.
+
+  (define evaluated-tpromise?
+    (λ (tp)
+      (or (tpromise-flat? tp)
+          (number? (tpromise-tensor tp)))))
 
   (for (((test-name test-data) (in-hash test-programs)))
      (match-define (test-program-data th res) test-data)
@@ -41,7 +18,7 @@
            forced res
            (format "Expected result doesn't match in test case ~a"
                    test-name))
-          (check-false (tcomp? (tpromise-tensor tp)))
+          (check-pred evaluated-tpromise? tp)
           (check-equal? (tpromise-shape tp) (flat:shape forced))))
        ((eval-res-2 res1 res2)
         (let*-values (((tp1 tp2) (th))
@@ -51,18 +28,19 @@
            forced1 res1
            (format "Expected first result doesn't match in test case ~a"
                    test-name))
-          (check-false (tcomp? (tpromise-tensor tp1)))
+          (check-pred evaluated-tpromise? tp1)
           (check-equal? (tpromise-shape tp1) (flat:shape forced1))
           (flat:check-tensor-equal?
            forced2 res2
            (format "Expected second result doesn't match in test case ~a"
                    test-name))
-          (check-false (tcomp? (tpromise-tensor tp2)))
+          (check-pred evaluated-tpromise? tp2)
           (check-equal? (tpromise-shape tp2) (flat:shape forced2))))))
 
 
   (define test-tensor-r1-0 (get-test-program 'tensor-r1-0))
-  (check-true (flat:flat? (tpromise-tensor test-tensor-r1-0)))
+  (check-false (flat:flat? (tpromise-tensor test-tensor-r1-0)))
+  (check-true (flat:flat? (car (unbox (tpromise-dst test-tensor-r1-0)))))
   (check-exn exn:fail? (λ () (tensor test-tensor-r1-0 4)))
   (check-exn exn:fail? (λ () (tensor 4 test-tensor-r1-0)))
 
@@ -96,6 +74,31 @@
        2)))
   (flat:check-tensor-equal? (↓ test-tcomp-partial-eval)
                             (↓ (tensor 1 2 3)))
+
+  (define test-id-scalar (get-test-program 'id-scalar))
+  (define test-force-scalar
+    (+-ρ test-id-scalar
+         (get-test-program 'sum-nested)))
+  (void (↓ test-id-scalar))
+  (flat:check-tensor-equal? (↓ test-force-scalar)
+                            (↓ (tensor 19 21 20)))
+
+  (define test-force-subexpr
+    (+-ρ (get-test-program 'id-scalar)
+         (get-test-program 'sum-nested)))
+  (define test-force-mutate
+    (+-ρ test-force-subexpr
+         (+-ρ (get-test-program 'sum-nested)
+              (get-test-program 'sum-nested))))
+  (void (↓ test-force-subexpr))
+  (flat:check-tensor-equal? (↓ test-force-mutate)
+                            (↓ (tensor 27 33 30)))
+
+  (define test-tp-r1 (tensor -1 -2 -3))
+  (define test-force-supexpr (abs-ρ test-tp-r1))
+  (void (↓ test-force-supexpr))
+  (flat:check-tensor-equal? (↓ test-tp-r1)
+                            (↓ (tensor -1 -2 -3)))
 
   (define test-trefs (get-test-program 'tcomp-trefs))
   (check-true (tcomp? (tpromise-tensor test-trefs)))

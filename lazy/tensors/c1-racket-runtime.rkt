@@ -4,9 +4,11 @@
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 
 (struct ext2-∇-result (res) #:mutable #:transparent)
+;; TODO: ds-ref is not being used, so remove it
+(struct ds-deref (idx) #:transparent)
 
 (define ext2-∇-forcer
-  (λ (fᵈ r0 r1 shape-fn t0 t1 z out0 out1)
+  (λ (fᵈ r0 r1 shape-fn t0 t1 z out-idx0 out-idx1)
     (let* ((f0 (ensure-flat t0))
            (f1 (ensure-flat t1))
            (fz (ensure-flat z))
@@ -55,8 +57,10 @@
                    vz
                    (+ offz iz)
                    stride-z)))
-           (data-segment-set! out0 (scalarize (flat s0 g0 0)))
-           (data-segment-set! out1 (scalarize (flat s1 g1 0)))))))))
+           (when out-idx0
+             (data-segment-set! out-idx0 (scalarize (flat s0 g0 0))))
+           (when out-idx1
+             (data-segment-set! out-idx1 (scalarize (flat s1 g1 0))))))))))
 
 (define rt:trefs
   (λ (ft b)
@@ -73,7 +77,10 @@
 
 (define data-segment-ref
   (λ (i)
-    (vector-ref (data-segment) i)))
+    (let ((res (vector-ref (data-segment) i)))
+      (match res
+        ((ds-deref idx) (vector-ref (data-segment) idx))
+        (_ res)))))
 
 (define-namespace-anchor a)
 (define runtime
@@ -81,6 +88,7 @@
   (namespace-anchor->namespace a))
 
 (provide runtime flat? flat:build-tensor flat:list->tensor
-         flat:tref rt:trefs (struct-out ext2-∇-result)
+         flat:tref rt:trefs (struct-out ext2-∇-result) set-ext2-∇-result-res!
+         (struct-out ds-deref)
          ext2-∇-forcer scalarize flat-ext1-∇ ensure-flat flat-ext2-ρ
          flat flat-store flat-offset flat-ext1-ρ data-segment)

@@ -7,6 +7,7 @@
 
 (define-binary-check (check-dual-equal? equal-wt? actual expected))
 (define-check (ρ-∇-checker fn args ans grads)
+  ;; TODO: This code ahould work even after removing the ↓ call
   (let* ((y (↓ (apply fn args)))
          (g (↓ (apply (∇¹ fn) args)))
          (ans-ρ (ρ ans)))
@@ -14,10 +15,10 @@
       ((and (equal-wt? ans-ρ (ρ y))
             (equal-wt? grads (ρ g))) (void))
       ((equal-wt? ans-ρ (ρ y))
-       (fail-check (format "Gradients failed to match.~%actual:~%~s~%expected:~s~%"
+       (fail-check (format "Gradients failed to match.~%actual:~%~s~%expected:~%~s~%"
                            (ρ g) grads)))
       (else
-       (fail-check (format "Answers failed to match.~%actual:~%~s~%expected:~s~%"
+       (fail-check (format "Answers failed to match.~%actual:~%~s~%expected:~%~s~%"
                            (ρ y) ans-ρ))))))
 
 (define-syntax check-ρ-∇

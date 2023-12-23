@@ -12,14 +12,24 @@
 (define ↓
   (lambda (tp)
     (match tp
-      [(tpromise v _)
-       #:when (or (flat:flat? v) (number? v))
+      [(tpromise v _ _ _)
+       #:when (number? v)
        v]
-      [(tpromise t _)
+      [(? tpromise-flat?)
+       (car (unbox (tpromise-dst tp)))]
+      [(tpromise t _ _ _)
        #:when (tcomp? t)
-       (let-values (((instrs data-segment) (compile-tensor t)))
+       (let-values (((instrs data-segment) (compile-tensor tp)))
          (let ((res (interp-racket instrs data-segment)))
-           (set-tpromise-tensor! tp res)
+           (cond
+             ((flat? res)
+              (set-tpromise-tensor! tp (tcomp-ds-ref #f))
+              (set-box! (tpromise-dst tp) (list res))
+              (set-box! (tpromise-sign tp) (list #"dsr")))
+             ((number? res)
+              (set-tpromise-tensor! tp res)
+              (set-box! (tpromise-dst tp) (list))
+              (set-box! (tpromise-sign tp) (list #"s" (number->bytes res)))))
            res))]
       ;; NOTE: This case runs when we use tp-scalarize to turn
       ;; the tensor to a scalar
