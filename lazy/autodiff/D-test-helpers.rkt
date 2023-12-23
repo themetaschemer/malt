@@ -7,9 +7,8 @@
 
 (define-binary-check (check-dual-equal? equal-wt? actual expected))
 (define-check (ρ-∇-checker fn args ans grads)
-  ;; TODO: This code ahould work even after removing the ↓ call
-  (let* ((y (↓ (apply fn args)))
-         (g (↓ (apply (∇¹ fn) args)))
+  (let* ((y (apply fn args))
+         (g (apply (∇¹ fn) args))
          (ans-ρ (ρ ans)))
     (cond
       ((and (equal-wt? ans-ρ (ρ y))
