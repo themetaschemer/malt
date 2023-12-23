@@ -4,8 +4,6 @@
 (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 
 (struct ext2-∇-result (res) #:mutable #:transparent)
-;; TODO: ds-ref is not being used, so remove it
-(struct ds-deref (idx) #:transparent)
 
 (define ext2-∇-forcer
   (λ (fᵈ r0 r1 shape-fn t0 t1 z out-idx0 out-idx1)
@@ -77,10 +75,7 @@
 
 (define data-segment-ref
   (λ (i)
-    (let ((res (vector-ref (data-segment) i)))
-      (match res
-        ((ds-deref idx) (vector-ref (data-segment) idx))
-        (_ res)))))
+    (vector-ref (data-segment) i)))
 
 (define-namespace-anchor a)
 (define runtime
@@ -89,6 +84,5 @@
 
 (provide runtime flat? flat:build-tensor flat:list->tensor
          flat:tref rt:trefs (struct-out ext2-∇-result) set-ext2-∇-result-res!
-         (struct-out ds-deref)
          ext2-∇-forcer scalarize flat-ext1-∇ ensure-flat flat-ext2-ρ
          flat flat-store flat-offset flat-ext1-ρ data-segment)
