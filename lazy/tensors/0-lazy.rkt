@@ -215,8 +215,7 @@ instructions refering to the same gensym variable
                 (sf1 (min-shape n s1))
                 (sf-out (shape-fn sf0 sf1)))
            (tpmake-ext2-ρ
-            (ensure-tpromise tp-t)
-            (ensure-tpromise tp-u)
+            tp-t tp-u
             f signature m n shape-fn
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]
@@ -235,8 +234,7 @@ instructions refering to the same gensym variable
                          u-shape
                          out-shape)))
            (tpmake-ext2-ρ
-            (ensure-tpromise tp-t)
-            (ensure-tpromise tp-u)
+            tp-t tp-u
             flat-f signature m n shape-fn
             (ext2-shapes s0 s1 m n sf-out
                          (λ (s-out . _) s-out))))]))))
@@ -251,26 +249,17 @@ instructions refering to the same gensym variable
         [expects-prealloc? #f]
         [signature (format "~a" f)])
     (λ (tp zp)
-      ;; we invoke ensure-tpromise on just zp because it's the result of calling
-      ;; force*1 which forces zp to be a non-tpromise value. We can ensure tp to
-      ;; be a tpromise as well, but currently in our workflow we never force tp
-      ;; before passing it to this function.
       ;;
       (cond
         ((number? tp) (f tp zp))
         (expects-prealloc?
-         (tpmake-ext1-∇ (ensure-tpromise tp)
-                        (ensure-tpromise zp)
-                        f signature m shape-fn
-                        (tp-shape tp)))
+         (tpmake-ext1-∇ tp zp f signature m shape-fn (tp-shape tp)))
         (else
          (let* ((in-shape (tpromise-shape tp))
                 (base-shape (min-shape m in-shape))
                 (out-shape (shape-fn base-shape))
                 (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-           (tpmake-ext1-∇ (ensure-tpromise tp)
-                          (ensure-tpromise zp) flat-f signature m shape-fn
-                          (tp-shape tp))))))))
+           (tpmake-ext1-∇ tp zp flat-f signature m shape-fn (tp-shape tp))))))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-∇
@@ -285,19 +274,13 @@ instructions refering to the same gensym variable
       (λ (tp-t tp-u tp-z)
         (cond
           (expects-prealloc?
-           (tp-f f
-                 (ensure-tpromise tp-t)
-                 (ensure-tpromise tp-u)
-                 (ensure-tpromise tp-z)))
+           (tp-f f tp-t tp-u tp-z))
           [else (let* ((t-shape (min-shape m (tp-shape tp-t)))
                        (u-shape (min-shape n (tp-shape tp-u)))
                        (out-shape (shape-fn t-shape u-shape))
                        (flat-f (functional->preallocated-2-∇
                                 f t-shape u-shape out-shape)))
-                  (tp-f flat-f
-                        (ensure-tpromise tp-t)
-                        (ensure-tpromise tp-u)
-                        (ensure-tpromise tp-z)))])))))
+                  (tp-f flat-f tp-t tp-u tp-z))])))))
 
 (define tp-d-ext2^
   (λ (fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z)
@@ -308,13 +291,6 @@ instructions refering to the same gensym variable
                       tp-t0 tp-t1 tp-z out-ref0 out-ref1 0 (tp-shape tp-t0))
        (tpmake-ext2-∇ fᵈ sign r0 r1 shape-fn
                       tp-t0 tp-t1 tp-z out-ref0 out-ref1 1 (tp-shape tp-t1))))))
-
-(define ensure-tpromise
-  (λ (v)
-    (cond
-      ((scalar? v) (tpmake-flat (ensure-flat v)))
-      ((flat? v) (tpmake-flat v))
-      (else v))))
 
 (define tp-rank
   (λ (tp)

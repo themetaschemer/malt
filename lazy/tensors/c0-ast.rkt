@@ -202,7 +202,6 @@
                 (gdst-list->tensor lst)
                 (gs-list->tensor lst)))))
 
-;; TODO: Call ensure-promise on the tpromise argument for all tpmake function
 (define tpmake-tref
   (λ (tp i shape)
     (tpromise (tcomp-tref tp (tcomp-ds-ref #f))
@@ -236,30 +235,48 @@
               (box (list (tpromise-dst tp-t) (tpromise-dst tp-u)))
               (gs-ext2-ρ-scalar signature tp-t tp-u))))
 
+(define ensure-tpromise
+  (λ (v)
+    (cond
+      ((number? v) (tpmake-flat (ensure-flat v)))
+      ((flat? v) (tpmake-flat v))
+      (else v))))
+
 (define tpmake-ext2-ρ
   (λ (tp-t tp-u f signature m n shape-fn shape)
-    (tpromise
-     (tcomp-ext2-ρ tp-t tp-u f signature m n shape-fn)
-     shape
-     (box (list (tpromise-dst tp-t) (tpromise-dst tp-u)))
-     (gs-ext2-ρ signature m n tp-t tp-u))))
+    (let ((tp-t (ensure-tpromise tp-t))
+          (tp-u (ensure-tpromise tp-u)))
+      (tpromise
+       (tcomp-ext2-ρ tp-t tp-u f signature m n shape-fn)
+       shape
+       (box (list (tpromise-dst tp-t) (tpromise-dst tp-u)))
+       (gs-ext2-ρ signature m n tp-t tp-u)))))
 
+;; we invoke ensure-tpromise on just zp because it's the result of calling
+;; force*1 which forces zp to be a non-tpromise value. We can ensure tp to
+;; be a tpromise as well, but currently in our workflow we never force tp
+;; before passing it to this function, nor do we need scalar tp to be wrapped in
+;; a tpromise.
 (define tpmake-ext1-∇
   (λ (tp zp f signature m shape-fn shape)
-    (tpromise
-     (tcomp-ext1-∇ tp zp f signature m shape-fn)
-     shape
-     (box (list (tpromise-dst tp) (tpromise-dst zp)))
-     (gs-ext1-∇ signature m tp zp))))
+    (let ((zp (ensure-tpromise zp)))
+      (tpromise
+       (tcomp-ext1-∇ tp zp f signature m shape-fn)
+       shape
+       (box (list (tpromise-dst tp) (tpromise-dst zp)))
+       (gs-ext1-∇ signature m tp zp)))))
 
 (define tpmake-ext2-∇
   (λ (fᵈ signature r0 r1 shape-fn tp-t0 tp-t1 tp-z out-ref0 out-ref1 i shape)
-    (tpromise
-     (tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn
-                   tp-t0 tp-t1 tp-z out-ref0 out-ref1 i)
-     shape
-     (gdst-ext2-∇ tp-t0 tp-t1 tp-z)
-     (gs-ext2-∇ signature r0 r1 tp-t0 tp-t1 tp-z i))))
+    (let ((tp-t0 (ensure-tpromise tp-t0))
+          (tp-t1 (ensure-tpromise tp-t1))
+          (tp-z (ensure-tpromise tp-z)))
+      (tpromise
+       (tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn
+                     tp-t0 tp-t1 tp-z out-ref0 out-ref1 i)
+       shape
+       (gdst-ext2-∇ tp-t0 tp-t1 tp-z)
+       (gs-ext2-∇ signature r0 r1 tp-t0 tp-t1 tp-z i)))))
 
 (define tpmake-reshape
   (λ (tp shape)
