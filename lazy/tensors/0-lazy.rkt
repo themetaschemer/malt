@@ -199,45 +199,32 @@ instructions refering to the same gensym variable
         [expects-prealloc? #f]
         [signature (format "~a" f)])
     (λ (tp-t tp-u)
-      ;; TODO: Refactor out the code to compute the shape like in tp-ext1-ρ
-      (cond
-        ((and (number? tp-t) (number? tp-u))
-         (f tp-t tp-u))
-        [(and (tpromise? tp-t) (tpromise? tp-u)
-              (null? (tpromise-shape tp-t))
-              (null? (tpromise-shape tp-u)))
-         ;; TODO: Fix the shape being used by using ext2-shapes
-         (tpmake-ext2-ρ-scalar f signature tp-t tp-u '())]
-        [expects-prealloc?
-         (let* ((s0 (tp-shape tp-t))
-                (s1 (tp-shape tp-u))
-                (sf0 (min-shape m s0))
-                (sf1 (min-shape n s1))
-                (sf-out (shape-fn sf0 sf1)))
+      (let* ((s0 (tp-shape tp-t))
+             (s1 (tp-shape tp-u))
+             (sf0 (min-shape m s0))
+             (sf1 (min-shape n s1))
+             (sf-out (shape-fn sf0 sf1)))
+        (cond
+          ((and (number? tp-t) (number? tp-u))
+           (f tp-t tp-u))
+          [(and (tpromise? tp-t) (tpromise? tp-u)
+                (null? (tpromise-shape tp-t))
+                (null? (tpromise-shape tp-u)))
+           (tpmake-ext2-ρ-scalar f signature tp-t tp-u sf-out)]
+          [expects-prealloc?
            (tpmake-ext2-ρ
             tp-t tp-u
             f signature m n shape-fn
             (ext2-shapes s0 s1 m n sf-out
-                         (λ (s-out . _) s-out))))]
-        [else
-         (let* ((s0 (tp-shape tp-t))
-                (s1 (tp-shape tp-u))
-                (sf0 (min-shape m s0))
-                (sf1 (min-shape n s1))
-                (sf-out (shape-fn sf0 sf1))
-                (t-shape (min-shape m s0))
-                (u-shape (min-shape n s1))
-                (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-ρ
-                         f
-                         t-shape
-                         u-shape
-                         out-shape)))
-           (tpmake-ext2-ρ
-            tp-t tp-u
-            flat-f signature m n shape-fn
-            (ext2-shapes s0 s1 m n sf-out
-                         (λ (s-out . _) s-out))))]))))
+                         (λ (s-out . _) s-out)))]
+          [else
+           (let ((flat-f (functional->preallocated-2-ρ
+                          f sf0 sf1 sf-out)))
+             (tpmake-ext2-ρ
+              tp-t tp-u
+              flat-f signature m n shape-fn
+              (ext2-shapes s0 s1 m n sf-out
+                           (λ (s-out . _) s-out))))])))))
 
 (define scalar-shape
   (λ (s0 [s1 '()]) '()))

@@ -109,7 +109,9 @@
       counter)))
 
 ;; TODO: Try using the signature field of tpromise struct as keys instead tcomp
-;; references
+;; references NOTE: We will need to generate signature out of the signature keys
+;; every time we need to call hash-ref or hash-set, so maybe we shouldn't
+;; implement this TODO
 (define cr-tpromise
   (λ (t counter uid)
     (match t
