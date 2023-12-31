@@ -25,80 +25,94 @@
 
 (define generate-ds-refs
   (λ (t)
-    (let-values (((t^ ref) (gdr-tpromise t 0)))
+    (let-values (((t^ ref) (gdr-tpromise t 0 (make-hasheq))))
       t^)))
 
 (define gdr-tpromise
-  (λ (tp ref)
+  (λ (tp ref memo)
     (match tp
       ((tpromise tc s dss sign)
-       (let-values (((tc^ ref^) (gdr-tcomp tc ref)))
+       (let-values (((tc^ ref^) (gdr-tcomp tc ref memo)))
          (values (tpromise tc^ s dss sign) ref^))))))
 
 (define gdr-tcomp
-  (λ (tc ref)
-    (match tc
-      ((? number?) (values tc ref))
-      [(tcomp-list->tensor lst)
-       (for/fold
-        ((tcs '())
-         (ref^ ref)
-         #:result (values (tcomp-list->tensor (reverse tcs)) ref^))
-        ((l lst))
-         (let-values (((tc ref^^)
-                       (cond
-                         ((tpromise? l) (gdr-tpromise l ref^))
-                         ((number? l) (values l ref^))
-                         (else (error 'gdr-list->tensor "Unexpected: ~a" l)))))
-           (values (cons tc tcs) ref^^)))]
-      [(tcomp-tref tp (tcomp-ds-ref #f))
-       (let-values (((tp^ ref^) (gdr-tpromise tp ref)))
-         (values (tcomp-tref tp^ (tcomp-ds-ref ref^)) (add1 ref^)))]
-      [(tcomp-trefs tp (tcomp-ds-ref #f))
-       (let-values (((tp^ ref^) (gdr-tpromise tp ref)))
-         (values (tcomp-trefs tp^ (tcomp-ds-ref ref^)) (add1 ref^)))]
-      [(tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z
-                     out-ref0
-                     out-ref1 i)
-       (let*-values (((tp-t0^ ref^) (gdr-tpromise tp-t0 ref))
-                     ((tp-t1^ ref^^) (gdr-tpromise tp-t1 ref^))
-                     ((tp-z^ ref^^^) (gdr-tpromise tp-z ref^^)))
-         (cond
-          ((and (eqv? i 0) (not (tcomp-ds-ref-index (ext2-∇-result-res out-ref0))))
-           (set-ext2-∇-result-res! out-ref0 (tcomp-ds-ref ref^^^)))
-          ((and (eqv? i 1) (not (tcomp-ds-ref-index (ext2-∇-result-res out-ref1))))
-           (set-ext2-∇-result-res! out-ref1 (tcomp-ds-ref ref^^^))))
-         (values (tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0^ tp-t1^ tp-z^
-                               out-ref0 out-ref1 i)
-                 (add1 ref^^^)))]
-      [(tcomp-ext1-∇ tp zp f sign m shape-fn)
-       (let*-values (((tp^ ref^) (gdr-tpromise tp ref))
-                     ((zp^ ref^^) (gdr-tpromise zp ref^)))
-         (values (tcomp-ext1-∇ tp^ zp^ f sign m shape-fn) ref^^))]
-      [(tcomp-ext2-ρ-scalar f sign tp-t tp-u)
-       (let*-values (((tp-t^ ref^) (gdr-tpromise tp-t ref))
-                     ((tp-u^ ref^^) (gdr-tpromise tp-u ref^)))
-         (values (tcomp-ext2-ρ-scalar f sign tp-t^ tp-u^) ref^^))]
-      [(tcomp-ext2-ρ tp-t tp-u f sign m n shape-fn)
-       (let*-values (((tp-t^ ref^) (gdr-tpromise tp-t ref))
-                     ((tp-u^ ref^^) (gdr-tpromise tp-u ref^)))
-         (values (tcomp-ext2-ρ tp-t^ tp-u^ f sign m n shape-fn) ref^^))]
-      [(tcomp-ext1-ρ-scalar f sign tp)
-       (let-values (((tp^ ref^) (gdr-tpromise tp ref)))
-         (values (tcomp-ext1-ρ-scalar f sign tp^) ref^))]
-      [(tcomp-ext1-ρ f sign m shape-fn tp)
-       (let-values (((tp^ ref^) (gdr-tpromise tp ref)))
-         (values (tcomp-ext1-ρ f sign m shape-fn tp^) ref^))]
-      [(tcomp-reshape s tp)
-       (let-values (((tp^ ref^) (gdr-tpromise tp ref)))
-         (values (tcomp-reshape s tp^) ref^))]
-      [(tcomp-ds-ref #f) (values (tcomp-ds-ref ref) (add1 ref))]
-      ;;need these cases for testing compiler invariant
-      [(tcomp-let lhs rhs body)
-       (let*-values (((rhs^ ref^) (gdr-tpromise rhs ref))
-                     ((body^ ref^^) (gdr-tpromise body ref^)))
-         (values (tcomp-let lhs rhs^ body^) ref^^))]
-      [(tcomp-var name) (values (tcomp-var name) ref)])))
+  (λ (tc ref memo)
+    (cond
+      ((hash-ref memo tc #f)
+       =>
+       (λ (res/ref-count)
+         (match-let (((cons res ref-count) res/ref-count))
+           (values res (+ ref ref-count)))))
+      (else
+       (let-values
+           (((res ref^)
+             (match tc
+               ((? number?) (values tc ref))
+               [(tcomp-list->tensor lst)
+                (for/fold
+                 ((tcs '())
+                  (ref^ ref)
+                  #:result (values (tcomp-list->tensor (reverse tcs)) ref^))
+                 ((l lst))
+                  (let-values (((tc ref^^)
+                                (cond
+                                  ((tpromise? l) (gdr-tpromise l ref^ memo))
+                                  ((number? l) (values l ref^))
+                                  (else (error 'gdr-list->tensor
+                                               "Unexpected: ~a" l)))))
+                    (values (cons tc tcs) ref^^)))]
+               [(tcomp-tref tp (tcomp-ds-ref #f))
+                (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
+                  (values (tcomp-tref tp^ (tcomp-ds-ref ref^)) (add1 ref^)))]
+               [(tcomp-trefs tp (tcomp-ds-ref #f))
+                (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
+                  (values (tcomp-trefs tp^ (tcomp-ds-ref ref^)) (add1 ref^)))]
+               [(tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z
+                              out-ref0
+                              out-ref1 i)
+                (let*-values (((tp-t0^ ref^) (gdr-tpromise tp-t0 ref memo))
+                              ((tp-t1^ ref^^) (gdr-tpromise tp-t1 ref^ memo))
+                              ((tp-z^ ref^^^) (gdr-tpromise tp-z ref^^ memo)))
+                  (cond
+                    ((and (eqv? i 0)
+                          (not (tcomp-ds-ref-index (ext2-∇-result-res out-ref0))))
+                     (set-ext2-∇-result-res! out-ref0 (tcomp-ds-ref ref^^^)))
+                    ((and (eqv? i 1)
+                          (not (tcomp-ds-ref-index (ext2-∇-result-res out-ref1))))
+                     (set-ext2-∇-result-res! out-ref1 (tcomp-ds-ref ref^^^))))
+                  (values (tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0^ tp-t1^ tp-z^
+                                        out-ref0 out-ref1 i)
+                          (add1 ref^^^)))]
+               [(tcomp-ext1-∇ tp zp f sign m shape-fn)
+                (let*-values (((tp^ ref^) (gdr-tpromise tp ref memo))
+                              ((zp^ ref^^) (gdr-tpromise zp ref^ memo)))
+                  (values (tcomp-ext1-∇ tp^ zp^ f sign m shape-fn) ref^^))]
+               [(tcomp-ext2-ρ-scalar f sign tp-t tp-u)
+                (let*-values (((tp-t^ ref^) (gdr-tpromise tp-t ref memo))
+                              ((tp-u^ ref^^) (gdr-tpromise tp-u ref^ memo)))
+                  (values (tcomp-ext2-ρ-scalar f sign tp-t^ tp-u^) ref^^))]
+               [(tcomp-ext2-ρ tp-t tp-u f sign m n shape-fn)
+                (let*-values (((tp-t^ ref^) (gdr-tpromise tp-t ref memo))
+                              ((tp-u^ ref^^) (gdr-tpromise tp-u ref^ memo)))
+                  (values (tcomp-ext2-ρ tp-t^ tp-u^ f sign m n shape-fn) ref^^))]
+               [(tcomp-ext1-ρ-scalar f sign tp)
+                (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
+                  (values (tcomp-ext1-ρ-scalar f sign tp^) ref^))]
+               [(tcomp-ext1-ρ f sign m shape-fn tp)
+                (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
+                  (values (tcomp-ext1-ρ f sign m shape-fn tp^) ref^))]
+               [(tcomp-reshape s tp)
+                (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
+                  (values (tcomp-reshape s tp^) ref^))]
+               [(tcomp-ds-ref #f) (values (tcomp-ds-ref ref) (add1 ref))]
+               ;;need these cases for testing compiler invariant
+               [(tcomp-let lhs rhs body)
+                (let*-values (((rhs^ ref^) (gdr-tpromise rhs ref memo))
+                              ((body^ ref^^) (gdr-tpromise body ref^ memo)))
+                  (values (tcomp-let lhs rhs^ body^) ref^^))]
+               [(tcomp-var name) (values (tcomp-var name) ref)])))
+         (hash-set! memo tc (cons res (- ref^ ref)))
+         (values res ref^))))))
 
 ;; Count references so that the tcomp AST nodes that refer to the same memory
 ;; location i.e. common AST nodes get extracted by let-binding them in the
@@ -109,9 +123,7 @@
       counter)))
 
 ;; TODO: Try using the signature field of tpromise struct as keys instead tcomp
-;; references NOTE: We will need to generate signature out of the signature keys
-;; every time we need to call hash-ref or hash-set, so maybe we shouldn't
-;; implement this TODO
+;; references
 (define cr-tpromise
   (λ (t counter uid)
     (match t
@@ -191,7 +203,10 @@
                   (run-compiler-ecs (ecs-tpromise t counter) '())))
       (for/fold ((body instrs))
                 ((binding bindings))
-        (tcomp-let (car binding) (cdr binding) body)))))
+        (tpromise (tcomp-let (car binding)
+                             (tpromise (cdr binding) '() (box '()) (box '()))
+                             body)
+                  '() (box '()) (box '()))))))
 
 (define ecs-tpromise
   (λ (tc counter)
