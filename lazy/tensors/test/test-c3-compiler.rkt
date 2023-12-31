@@ -109,4 +109,63 @@
      (string-append "eq? equivalent flat tensors and trefs index lists"
                     " used to construct the source AST must"
                     " be eq? equivalent in the data segment as well.")))
-  )
+
+  (define count-tcomp-var
+    (λ (tp)
+      (ctv-tcomp (tpromise-tensor tp))))
+
+  (define ctv-tcomp
+    (λ (tc)
+      (match tc
+      ((? number?) 0)
+      [(tcomp-list->tensor lst)
+       (for/sum
+        ((l lst))
+         (cond
+           ((tpromise? l) (count-tcomp-var l))
+           ((number? l) 0)
+           (else (error 'cdsr-list->tensor "Unexpected: ~a" l))))]
+      [(tcomp-tref tp _) (count-tcomp-var tp)]
+      [(tcomp-trefs tp _) (count-tcomp-var tp)]
+      [(tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z
+                     out-ref0
+                     out-ref1 i)
+       (let ((c0 (count-tcomp-var tp-t0))
+             (c1 (count-tcomp-var tp-t1))
+             (cz (count-tcomp-var tp-z)))
+         (+ c0 c1 cz))]
+      [(tcomp-ext1-∇ tp zp f sign m shape-fn)
+       (let ((ct (count-tcomp-var tp))
+             (cz (count-tcomp-var zp)))
+         (+ ct cz))]
+      [(tcomp-ext2-ρ-scalar f sign tp-t tp-u)
+       (let ((ct (count-tcomp-var tp-t))
+             (cu (count-tcomp-var tp-u)))
+         (+ ct cu))]
+      [(tcomp-ext2-ρ tp-t tp-u f sign m n shape-fn)
+       (let ((ct (count-tcomp-var tp-t))
+             (cu (count-tcomp-var tp-u)))
+         (+ ct cu))]
+      [(tcomp-ext1-ρ-scalar f sign tp) (count-tcomp-var tp)]
+      [(tcomp-ext1-ρ f sign m shape-fn tp) (count-tcomp-var tp)]
+      [(tcomp-reshape s tp) (count-tcomp-var tp)]
+      [(tcomp-ds-ref i) 0]
+      [(tcomp-let lhs rhs body)
+       (let ((cr (count-tcomp-var rhs))
+             (cb (count-tcomp-var body)))
+         (+ cr cb))]
+      [(tcomp-var name) 1])))
+
+  (define get-common-subexprs
+    (λ (tp)
+      (let ((instrs (generate-ds-refs tp)))
+        (extract-common-subexpressions instrs (count-references instrs)))))
+
+  (check-equal?
+   (count-tcomp-var (get-common-subexprs (get-test-program 'common-subexpression)))
+   2)
+  (check-equal?
+   (count-tcomp-var
+    (get-common-subexprs (get-test-program 'nested-common-subexpression)))
+   2)
+)
