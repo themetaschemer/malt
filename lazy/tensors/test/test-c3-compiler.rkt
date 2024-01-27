@@ -2,29 +2,68 @@
   (require rackunit)
   (require "B-test-programs.rkt")
   (require "0-lazy.rkt")
+  (require "c2-interpreter.rkt")
+  (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
 
   (define current-test-program-name (make-parameter #f))
   (define-check (check-compiler-invariants tp)
-    (let-values (((instrs ds) (compile-tensor tp)))
-      (with-check-info
-          (('data-segment ds)
-           ('instrs instrs))
-        (define test-name-string
-          (cond
-            ((current-test-program-name) (format "In test case: ~a"
-                                                 (current-test-program-name)))
-            (else "")))
-        'ok
-        ;;TODO: Add a check to ensure the number of tcomp-ds-ref occurring in
-        ;;the input equals the size of the data segment
-        #;
-        (for ((name/flat ds))
-          (unless (and (flat:flat? (cdr name/flat))
-                       (not (null? (flat:flat-shape (cdr name/flat)))))
-            (fail-check (format (string-append "Value associated with the variable"
-                                               " ~a should be a flat tensor. "
-                                               "Associated value found: ~a")
-                                (car name/flat) (cdr name/flat))))))))
+    (define ds (dst->data-segment (tpromise-dst tp)))
+    (define signature (sign (tpromise-sign tp)))
+    (define interp-tp (interp-tensor tp))
+    (with-check-info
+        (('data-segment ds)
+         ('signature signature)
+         ('input-computation (tpromise-tensor tp))
+         ('expected-interpretation interp-tp)
+         ('test-name (current-test-program-name)))
+      (for ((d ds))
+        (unless (or (number? d)
+                    (flat:flat? d)
+                    (eqv? d 'uncalculated))
+          (fail-check (format (string-append "Data segment should only contain flat tensors "
+                                             ", the symbol 'uncalculated or numbers."
+                                             " Found: ~a")
+                              d))))
+      (parameterize ((cache (make-hash)))
+        (let* ((instrs-dsr (generate-ds-refs tp))
+               (interp-dsr (interp-tensor instrs-dsr)))
+          (unless (flat:tensor-equal? interp-dsr interp-tp)
+            (fail-check (format
+                         (string-append
+                          "Result of interpreting pass generate-ds-ref doesn't"
+                          " match expected interpretation. Actual "
+                          "interpretation: ~a~n"))
+                        interp-dsr))
+          (let ((counter (count-references instrs-dsr)))
+            (let* ((extracted (extract-common-subexpressions instrs-dsr counter))
+                   (interp-extracted (interp-tensor extracted)))
+              (unless (flat:tensor-equal? interp-extracted interp-tp)
+                (fail-check (format
+                             (string-append
+                              "Result of interpreting pass"
+                              " extract-common-subexpression doesn't"
+                              " match expected interpretation. Actual "
+                              "interpretation: ~a~n"))
+                            interp-extracted))
+              (let* ((gr (generate-racket extracted))
+                     (rkt (compile-racket gr))
+                     (interp-rkt (interp-racket rkt ds)))
+                (unless (flat:tensor-equal? interp-rkt interp-tp)
+                  (fail-check (format
+                               (string-append
+                                "Result of interpreting compiled racket code doesn't"
+                                " match expected interpretation. Actual "
+                                "interpretation: ~a~n"))
+                              interp-rkt))
+                (hash-set! (cache) signature rkt)
+                (compile-tensor tp)
+                (unless (eqv? (hash-count (cache)) 1)
+                  (fail-check (format
+                               (string-append
+                                "Compiling the same tpromise again shouldn't"
+                                " change the number of entries in the cache."
+                                " Number of cache entries: ~a~n")
+                               (hash-count (cache))))))))))))
 
   (for (((test-name test-data) (in-hash test-programs)))
      (match-define (test-program-data th res) test-data)
@@ -37,6 +76,7 @@
          (let*-values (((tp1 tp2) (th)))
            (check-compiler-invariants tp1)
            (check-compiler-invariants tp2))))))
+
   (define-check (check-signatures-equal? t1 t2)
     (let ((sig1 (tpromise-sign t1))
           (sig2 (tpromise-sign t2)))

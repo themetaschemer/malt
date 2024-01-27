@@ -123,7 +123,9 @@
       counter)))
 
 ;; TODO: Try using the signature field of tpromise struct as keys instead tcomp
-;; references
+;; references. The naive way to do this might be inefficient because of the
+;; constant conversion between the tree representation of the signature and the
+;; numeric hash signature.
 (define cr-tpromise
   (λ (t counter uid)
     (match t
@@ -167,9 +169,9 @@
                      ((tpromise? l) (cr-tpromise l counter^^ uid^^))
                      ((number? l) (values counter^^ uid^^))
                      (else (error 'cr-list->tensor "Unexpected: ~a" l))))]
-                [(tcomp-tref tp i)
+                [(tcomp-tref tp (and i (tcomp-ds-ref _)))
                  (cr-tpromise tp counter^ uid^)]
-                [(tcomp-trefs tp b)
+                [(tcomp-trefs tp (and b (tcomp-ds-ref _)))
                  (cr-tpromise tp counter^ uid^)]
                 [(tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
                  (let*-values (((counter-1 uid-1) (cr-tpromise tp-t0 counter^ uid^))
@@ -201,7 +203,13 @@
   (λ (t counter)
     (let-values (((instrs bindings)
                   (run-compiler-ecs (ecs-tpromise t counter) '())))
-      (for/fold ((body instrs))
+      (for/fold ((body instrs)
+                 #:result ;; set-box! the data-segment of result so that
+                          ;; applying it to interp-tensor works
+                 (begin
+                   (set-box! (tpromise-dst body) (unbox (tpromise-dst t)))
+                   (set-box! (tpromise-sign body) (unbox (tpromise-sign t)))
+                   body))
                 ((binding bindings))
         (tpromise (tcomp-let (car binding)
                              (tpromise (cdr binding) '() (box '()) (box '()))
@@ -245,12 +253,12 @@
             instrs-list-compiler
             (λ (instrs-list)
               (inj-ecs-tcomp (tcomp-list->tensor instrs-list) tc-counter-data))))]
-        [(tcomp-tref tp i)
+        [(tcomp-tref tp (and i (tcomp-ds-ref _)))
          (->ecs
           (ecs-tpromise tp counter)
           (λ (instrs)
             (inj-ecs-tcomp (tcomp-tref instrs i) tc-counter-data)))]
-        [(tcomp-trefs tp b)
+        [(tcomp-trefs tp (and b (tcomp-ds-ref _)))
          (->ecs
           (ecs-tpromise tp counter)
           (λ (instrs)
@@ -374,18 +382,19 @@
     (match tc
       [v #:when (number? v) v]
       [(tcomp-list->tensor lst)
-       (let ((instrs-list (map (λ (t)
-                                 (cond
-                                   ((tpromise? t) (gr-tpromise t))
-                                   ((number? t) t)
-                                   (else (error 'gr-list->tensor "Unexpected: ~a" t))))
-                               lst)))
+       (let ((instrs-list
+              (map (λ (t)
+                     (cond
+                       ((tpromise? t) (gr-tpromise t))
+                       ((number? t) t)
+                       (else (error 'gr-list->tensor "Unexpected: ~a" t))))
+                   lst)))
          `(flat:list->tensor (list ,@instrs-list)))]
-      [(tcomp-tref tp i)
+      [(tcomp-tref tp (and i (tcomp-ds-ref _)))
        (let ((instrs (gr-tpromise tp))
              (i-instrs (gr-tcomp i)))
          `(flat:tref ,instrs ,i-instrs))]
-      [(tcomp-trefs tp b)
+      [(tcomp-trefs tp (and b (tcomp-ds-ref _)))
        (let ((instrs (gr-tpromise tp))
              (b-instrs (gr-tcomp b)))
          `(rt:trefs ,instrs ,b-instrs))]
@@ -400,9 +409,9 @@
                    [v (data-segment-ref index)])
               (cond
                 ((eqv? v 'uncalculated)
-                 (ext2-∇-forcer ,fᵈ ,r0 ,r1 ,shape-fn
-                                ,t0-instrs ,t1-instrs
-                                ,z-instrs ,out-idx0 ,out-idx1)
+                 (ext2-∇-forcer! ,fᵈ ,r0 ,r1 ,shape-fn
+                                 ,t0-instrs ,t1-instrs
+                                 ,z-instrs ,out-idx0 ,out-idx1)
                  (data-segment-ref index))
                 (else v)))))]
       [(tcomp-ext1-∇ tp zp f sign m shape-fn)
@@ -489,23 +498,6 @@
     (parameterize ([current-namespace runtime])
       (compile-syntax (expand r)))))
 
-;;TODO: update this for new compiler passes
-(define compile-tensor/checks
-  (λ (t)
-    t
-    #;
-    (let-values (((eds-instrs ds) (extract-data-segment t)))
-      (flat:check-tensor-equal? (interp-tensor t) (interp-tensor eds-instrs))
-      (let ((counter (count-references t)))
-        (let ((extracted (extract-common-subexpressions t counter)))
-          (flat:check-tensor-equal? (interp-tensor t) (interp-tensor extracted))
-          (for/list ((cd (hash-values (count-references extracted))))
-            (check-equal? (counter-data-ref-count cd) 1))
-          (let-values (((rkt env) (generate-racket extracted)))
-            (flat:check-tensor-equal? (interp-tensor extracted)
-                                      (interp-racket rkt env))
-            (values rkt env)))))))
-
 (define get-compiled
   (λ (t)
     (let-values (((instrs env)
@@ -514,5 +506,5 @@
          ,instrs))))
 
 (include "test/test-c3-compiler.rkt")
-(provide get-compiled compile-tensor compile-tensor/checks print-compiler?
+(provide get-compiled compile-tensor print-compiler?
          (rename-out (cache compiler-cache)))
