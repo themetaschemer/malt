@@ -13,6 +13,7 @@ TEST_FLAGS=-q
 LAZY_DIR=lazy
 LEARNER_DIR=learner
 FLAT_DIR=flat-tensors
+UNIFORM_DIR=uniform-tensors
 NESTED_DIR=nested-tensors
 TOOLS_DIR=tools
 MALTED_DIR=malted
@@ -155,6 +156,54 @@ FLAT_SOURCES=$(FLAT_TENSORS_SOURCES)\
 	$(FLAT_AUTODIFF_SOURCES)\
 	$(FLAT_EXT_OPS_SOURCES)\
 	$(FLAT_LOADERS)
+
+# uniform-tensors
+UNIFORM_TENSORS_DIR=$(UNIFORM_DIR)/tensors
+UNIFORM_AUTODIFF_DIR=$(UNIFORM_DIR)/autodiff
+UNIFORM_EXT_OPS_DIR=$(UNIFORM_DIR)/ext-ops
+
+UNIFORM_TENSORS_SOURCES=\
+  $(UNIFORM_TENSORS_DIR)/0-vectors.rkt\
+  $(UNIFORM_TENSORS_DIR)/1-flats.rkt\
+  $(UNIFORM_TENSORS_DIR)/A-equality.rkt\
+  $(UNIFORM_TENSORS_DIR)/B-tensor-basics.rkt\
+  $(UNIFORM_TENSORS_DIR)/C-tensor-ops.rkt\
+  $(UNIFORM_TENSORS_DIR)/D-extend.rkt\
+  $(UNIFORM_DIR)/tensors.rkt
+
+UNIFORM_AUTODIFF_SOURCES=\
+  $(UNIFORM_AUTODIFF_DIR)/A-autodiff.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/B-prims.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/E-print.rkt\
+  $(UNIFORM_DIR)/autodiff.rkt
+
+UNIFORM_EXT_OPS_SOURCES=\
+  $(UNIFORM_EXT_OPS_DIR)/A-scalar-ops.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/B-comparators.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/C-star-2-1.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/D-sum.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/E-argmax.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/F-max.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/G-correlate.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/I-flatten.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/K-concat.rkt\
+  $(UNIFORM_DIR)/ext-ops.rkt
+
+UNIFORM_LOADERS=\
+  $(UNIFORM_DIR)/no-duals-no-overrides.rkt\
+  $(UNIFORM_DIR)/no-duals.rkt\
+  $(UNIFORM_DIR)/no-overrides.rkt\
+  $(UNIFORM_DIR)/tensors.rkt\
+  $(UNIFORM_DIR)/autodiff.rkt\
+  $(UNIFORM_DIR)/ext-impl.rkt\
+  $(UNIFORM_DIR)/ext-ops.rkt
+
+UNIFORM_SOURCES=$(UNIFORM_TENSORS_SOURCES)\
+	$(UNIFORM_AUTODIFF_SOURCES)\
+	$(UNIFORM_EXT_OPS_SOURCES)\
+	$(UNIFORM_LOADERS)
 
 # nested-tensors
 NESTED_TENSORS_DIR=$(NESTED_DIR)/tensors
