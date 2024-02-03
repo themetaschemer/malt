@@ -14,7 +14,7 @@
 (define list->vec list->f32vector)
 (define build-vec
   (λ (n proc)
-    (list->vec (map proc (range n)))))
+    (list->vec (map (compose exact->inexact proc) (range n)))))
 (define vec->cpointer f32vector->cpointer)
 
 (define-for-syntax debug-leaks? #f)
