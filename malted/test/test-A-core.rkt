@@ -39,9 +39,9 @@
                                           (tensor -0.04142 -0.03111))))
 
   (let ((a (tensor 7 8 9)))
-    (check-dual-equal? (exp a) (tensor 1096.6331 2980.9579 8103.0839))
+    (check-dual-equal? (exp a) (tensor 1096.6332 2980.9579 8103.0839))
     (check-dual-equal? ((∇¹ exp) a)
-                       (list (tensor 1096.6331 2980.9579 8103.0839)))
+                       (list (tensor 1096.6332 2980.9579 8103.0839)))
     (check-dual-equal? (log a) (tensor 1.9459 2.0794 2.1972))
     (check-dual-equal? ((∇¹ log) a) (list (tensor 0.1428 0.125 0.1111)))
     (check-dual-equal? (sqrt a) (tensor 2.6457 2.8284 3.0))
