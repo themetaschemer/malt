@@ -15,10 +15,6 @@
 
 (define tolerance (make-parameter 0.0001))
 
-;;TODO: Discuss if this is the right fix, because without this 2 tests in
-;;A-core.rkt fail. (Also delete the printfs later)
-(tolerance 0.001)
-
 (define equal-within-tolerance?
   (make-parameter
    (λ (actual expected)
@@ -48,7 +44,6 @@
         (expected-size (flat-size expected))
         (actual-store (flat-store actual))
         (expected-store (flat-store expected)))
-    ;(printf "###(equal-elements? ~a ~a)~n" actual expected)
     (and (equal? actual-size expected-size)
          (call/cc (λ (return)
                     (for/fold ([check #t])
@@ -58,14 +53,10 @@
                                [i-expected (in-range expected-offset
                                                      (+ expected-offset
                                                         expected-size))])
-                      (define actual-elem (vref actual-store i-actual))
-                      (define expected-elem (vref expected-store i-expected))
-                      ;(printf "###actual: ~a \texpected: ~a~n" actual-elem expected-elem)
-                      ;(printf "### |actual - expected| = ~a~n" (abs (- actual-elem expected-elem)))
                       (cond
                         (((equal-within-tolerance?)
-                          actual-elem
-                          expected-elem) check)
+                          (vref actual-store i-actual)
+                          (vref expected-store i-expected)) check)
                         (else (return #f)))))))))
 
 (define-binary-check (check-tensor-equal? tensor-equal? actual expected))
