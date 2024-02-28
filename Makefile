@@ -232,6 +232,7 @@ MALTED_SOURCES=\
 # All the sources together, plus entry points
 SOURCES=$(LEARNER_SOURCES)\
   $(FLAT_SOURCES)\
+  $(UNIFORM_SOURCES)\
   $(NESTED_SOURCES)\
   $(TOOLS_SOURCES)\
   $(MALTED_SOURCES)\

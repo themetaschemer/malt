@@ -63,4 +63,4 @@
 
 (include "test/test-A-equality.rkt")
 
-(provide tolerance equal-within-tolerance? tensor-equal? check-tensor-equal?)
+(provide tolerance equal-within-tolerance? tensor-equal? check-tensor-equal? equal-elements?)
