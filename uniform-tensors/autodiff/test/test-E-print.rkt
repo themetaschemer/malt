@@ -18,54 +18,54 @@
             deep-tensor deep-tensor deep-tensor deep-tensor deep-tensor
             deep-tensor deep-tensor deep-tensor deep-tensor deep-tensor))
 
-  (check-equal? (make-printable-flat long-tensor 3) (fake-tensor '(1 2 3 ...)))
+  (check-equal? (make-printable-flat long-tensor 3) (fake-tensor '(1.0 2.0 3.0 ...)))
   (check-equal? (make-printable-flat deep-tensor 3)
                 (fake-tensor
-                 (list (fake-tensor '(1 2 3 ...))
-                       (fake-tensor '(1 2 3 ...))
-                       (fake-tensor '(1 2 3 ...))
+                 (list (fake-tensor '(1.0 2.0 3.0 ...))
+                       (fake-tensor '(1.0 2.0 3.0 ...))
+                       (fake-tensor '(1.0 2.0 3.0 ...))
                        '...)))
 
   (check-equal? (make-printable-flat deeper-tensor 3)
                 (fake-tensor
                  (list
                   (fake-tensor
-                   (list (fake-tensor '(1 2 3 ...))
-                         (fake-tensor '(1 2 3 ...))
-                         (fake-tensor '(1 2 3 ...))
+                   (list (fake-tensor '(1.0 2.0 3.0 ...))
+                         (fake-tensor '(1.0 2.0 3.0 ...))
+                         (fake-tensor '(1.0 2.0 3.0 ...))
                          '...))
                   (fake-tensor
-                   (list (fake-tensor '(1 2 3 ...))
-                         (fake-tensor '(1 2 3 ...))
-                         (fake-tensor '(1 2 3 ...))
+                   (list (fake-tensor '(1.0 2.0 3.0 ...))
+                         (fake-tensor '(1.0 2.0 3.0 ...))
+                         (fake-tensor '(1.0 2.0 3.0 ...))
                          '...))
                   (fake-tensor
-                   (list (fake-tensor '(1 2 3 ...))
-                         (fake-tensor '(1 2 3 ...))
-                         (fake-tensor '(1 2 3 ...))
+                   (list (fake-tensor '(1.0 2.0 3.0 ...))
+                         (fake-tensor '(1.0 2.0 3.0 ...))
+                         (fake-tensor '(1.0 2.0 3.0 ...))
                          '...))
                   '...)))
   (parameterize ((max-tensor-print-length 3))
-    (check-equal? (make-printable dualized-long-tensor 3) (fake-tensor '(1 2 3 ...)))
+    (check-equal? (make-printable dualized-long-tensor 3) (fake-tensor '(1.0 2.0 3.0 ...)))
     (check-equal? (make-printable (list long-tensor dualized-long-tensor deeper-tensor))
                   (list
-                   (fake-tensor '(1 2 3 ...))
-                   (fake-tensor '(1 2 3 ...))
+                   (fake-tensor '(1.0 2.0 3.0 ...))
+                   (fake-tensor '(1.0 2.0 3.0 ...))
                    (fake-tensor
                     (list
                      (fake-tensor
-                      (list (fake-tensor '(1 2 3 ...))
-                            (fake-tensor '(1 2 3 ...))
-                            (fake-tensor '(1 2 3 ...))
+                      (list (fake-tensor '(1.0 2.0 3.0 ...))
+                            (fake-tensor '(1.0 2.0 3.0 ...))
+                            (fake-tensor '(1.0 2.0 3.0 ...))
                             '...))
                      (fake-tensor
-                      (list (fake-tensor '(1 2 3 ...))
-                            (fake-tensor '(1 2 3 ...))
-                            (fake-tensor '(1 2 3 ...))
+                      (list (fake-tensor '(1.0 2.0 3.0 ...))
+                            (fake-tensor '(1.0 2.0 3.0 ...))
+                            (fake-tensor '(1.0 2.0 3.0 ...))
                             '...))
                      (fake-tensor
-                      (list (fake-tensor '(1 2 3 ...))
-                            (fake-tensor '(1 2 3 ...))
-                            (fake-tensor '(1 2 3 ...))
+                      (list (fake-tensor '(1.0 2.0 3.0 ...))
+                            (fake-tensor '(1.0 2.0 3.0 ...))
+                            (fake-tensor '(1.0 2.0 3.0 ...))
                             '...))
                      '...))))))

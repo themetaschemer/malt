@@ -17,9 +17,9 @@
     (for ([i (in-range 0 stride-out)])
       (cond
         ((< i stride0)
-         (vector-set! v-out (+ i-out i) (vector-ref v0 (+ i0 i))))
+         (vset! v-out (+ i-out i) (vref v0 (+ i0 i))))
         (else
-         (vector-set! v-out (+ i-out i) (vector-ref v1 (+ i1 (- i stride0)))))))))
+         (vset! v-out (+ i-out i) (vref v1 (+ i1 (- i stride0)))))))))
 
 (define concat-base-∇
   (λ (g0 g1 v0 i0 stride0
