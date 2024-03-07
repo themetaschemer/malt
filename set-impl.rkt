@@ -11,6 +11,7 @@
                               nested-tensors
                               flat-tensors
                               uniform-tensors
+                              accelerated-tensors
                               lazy)))
       (error "Unknown implementation: ~a~%" impl))
     (setup #:collections (list (list "malt")) #:clean? #t)
