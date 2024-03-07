@@ -1,5 +1,6 @@
 #lang racket
 (require ffi/vector)
+(require ffi/unsafe)
 
 ;;------------------------------------------------
 ;; Raw representation of vectors
@@ -16,6 +17,13 @@
   (λ (n proc)
     (list->vec (map (compose exact->inexact proc) (range n)))))
 (define vec->cpointer f32vector->cpointer)
+(define vref-cpointer
+  (λ (v i)
+    (unless (< i (vlen v))
+      (error 'vref-cpointer
+             "Index ~a out of range [0, ~a]"
+             i (vlen v)))
+    (ptr-add (vec->cpointer v) i _float)))
 
 (define-for-syntax debug-leaks? #f)
 (define-syntax when-debug-leaks
@@ -39,7 +47,7 @@
           [is (in-range isrc (+ n isrc))])
       (vset! dest id (vref src is)))))
 
-(provide vec? vec vref vset! vlen vcopy list->vec build-vec vec->cpointer new-vec)
+(provide vec? vec vref vset! vlen vcopy list->vec build-vec vec->cpointer vref-cpointer new-vec)
 
 ;;------------------------------------------------
 ;; Memory management for flat-vectors
