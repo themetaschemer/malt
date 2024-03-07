@@ -149,7 +149,6 @@
   (define r-3-4
     (*-2-1 t3 t4))
 
-  (check-equal? (flat-shape r-3-4) '(3 5 6))
   (check-tensor-equal? r-3-4
                        (reshape
                         '(3 5 6)

@@ -53,7 +53,7 @@
       (let ((st (shape-ρ t))
             (su (shape-ρ u)))
         (ensure-compatible-shapes n st su)
-        ((ext2 concat-base-ρ n n concat-shape) t u)))))
+        ((ext2-ρ concat-base-ρ n n concat-shape) t u)))))
 
 (define ensure-compatible-shapes
   (λ (n st su)
