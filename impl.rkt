@@ -14,11 +14,13 @@
             ((learner) #'(require "learner.rkt"))
             ((flat-tensors) #'(require "flat-tensors.rkt"))
             ((uniform-tensors) #'(require "uniform-tensors.rkt"))
+            ((accelerated-tensors) #'(require "accelerated-tensors.rkt"))
             ((nested-tensors) #'(require "nested-tensors.rkt")))
         #,(case (tensor-implementation)
             ((learner) #'(provide (all-from-out "learner.rkt")))
             ((flat-tensors) #'(provide (all-from-out "flat-tensors.rkt")))
             ((uniform-tensors) #'(provide (all-from-out "uniform-tensors.rkt")))
+            ((accelerated-tensors) #'(provide (all-from-out "accelerated-tensors.rkt")))
             ((nested-tensors) #'(provide (all-from-out "nested-tensors.rkt")))))))
 
 (load-tensors)
