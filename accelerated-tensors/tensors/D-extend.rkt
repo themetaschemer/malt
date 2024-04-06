@@ -224,7 +224,7 @@
            (size-out (size-of s-out))
            (v-out (new-vec size-out 0.0)))
       (cond
-        ((accelerate?) (run-prim1-ρ! f-acc
+        ((accelerate?) (run-prim1-ρ! (ext1-ρ-kernel f-acc)
                                      v0 off0 size0 stride0
                                      v-out size-out stride-out))
         (else
@@ -252,7 +252,7 @@
 
            (g0 (new-vec size0 0.0)))
       (cond
-        ((accelerate?) (run-prim1-∇! fᵈ-acc g0
+        ((accelerate?) (run-prim1-∇! (ext1-∇-kernel fᵈ-acc) g0
                                      v0 off0 size0 stride0
                                      vz offz size-z stride-z))
         (else
@@ -280,10 +280,10 @@
            (stride1 (size-of sf1))
            (stride-out (size-of sf-out)))
       (ext2-shapes s0 s1 r0 r1 sf-out
-        (λ (s-out size-out q0 q1 strides)
+        (λ (s-out size-out q0 q1 strides parallel-desc?)
           (let ((out-v (new-vec size-out 0.0)))
             (cond
-              ((accelerate?) (run-prim2-ρ! f-acc strides
+              ((accelerate?) (run-prim2-ρ! (ext2-ρ-kernel f-acc strides)
                                            v0 off0 size0 stride0
                                            v1 off1 size1 stride1
                                            out-v size-out stride-out))
@@ -315,18 +315,28 @@
            (vz (flat-store z))
            (offz (flat-offset z)))
       (ext2-shapes s0 s1 r0 r1 sf-z
-        (λ (sz size-z q0 q1 strides)
+        (λ (sz size-z q0 q1 strides parallel-desc?)
           (let ((g0 (new-vec (size-of s0) 0.0))
                 (g1 (new-vec (size-of s1) 0.0)))
             (cond
-              ((accelerate?) (run-prim2-∇! fᵈ-acc strides g0 g1
-                                           v0 off0 size0 stride0
-                                           v1 off1 size1 stride1
-                                           vz offz size-z stride-z))
+              ((accelerate?)
+               (cond
+                 (parallel-desc? (run-prim2-∇-atomic! (ext2-∇-kernel-atomic fᵈ-acc strides)
+                                                      g0 g1
+                                                      v0 off0 size0 stride0
+                                                      v1 off1 size1 stride1
+                                                      vz offz size-z stride-z))
+                 (else
+                  (let*-values (((kernel-code0 kernel-code1)
+                                 (ext2-∇-kernel-split fᵈ-acc strides s0 s1 r0 r1 sz (length sf-z))))
+                    (run-prim2-∇-split! kernel-code0 kernel-code1
+                                        g0 g1
+                                        v0 off0 size0 stride0
+                                        v1 off1 size1 stride1
+                                        vz offz size-z stride-z)))))
               (else
                (for ([iz (in-range 0 size-z stride-z)])
-                 (let-values (((i0 i1)
-                               (idxs strides iz off0 off1)))
+                 (let-values (((i0 i1) (idxs strides iz off0 off1)))
                    (fᵈ g0 g1 v0 i0 stride0 v1 i1 stride1 vz (+ offz iz) stride-z)))))
             (values (flat s0 g0 0)
                     (flat s1 g1 0))))))))
@@ -341,7 +351,8 @@
               (size-of sf-out)
               (size-of s0)
               (size-of s1)
-              '()))
+              '()
+              #t))
 
         ((= r0 l0)
          (ext2-shapes s0 (cdr s1) r0 r1 sf-out
@@ -371,30 +382,33 @@
 
 (define desc-both
   (λ (d k)
-    (λ (s-out qout q0 q1 strides)
+    (λ (s-out qout q0 q1 strides parallel-desc?)
       (k (cons d s-out)
          (* qout d)
          (* q0 d)
          (* q1 d)
-         (cons (vector qout q0 q1) strides)))))
+         (cons (vector qout q0 q1) strides)
+         parallel-desc?))))
 
 (define desc-left
   (λ (d k)
-    (λ (s-out qout q0 q1 strides)
+    (λ (s-out qout q0 q1 strides parallel-desc?)
       (k (cons d s-out)
          (* qout d)
          (* q0 d)
          q1
-         (cons (vector qout q0 0) strides)))))
+         (cons (vector qout q0 0) strides)
+         #f))))
 
 (define desc-right
   (λ (d k)
-    (λ (s-out qout q0 q1 strides)
+    (λ (s-out qout q0 q1 strides parallel-desc?)
       (k (cons d s-out)
          (* qout d)
          q0
          (* q1 d)
-         (cons (vector qout 0 q1) strides)))))
+         (cons (vector qout 0 q1) strides)
+         #f))))
 
 (define v-copy-flat!
   (λ (vg ig a)
