@@ -10,29 +10,61 @@
 
 (define context (make-parameter #f))
 (define command-queue (make-parameter #f))
-(define device (make-parameter #f))
+(define platform
+  (let ([platform #f])
+    (lambda ()
+      (or platform
+          (begin
+            (set! platform (cvector-ref (clGetPlatformIDs:vector) 0))
+            platform)))))
+(define devices
+  (let ([devices #f])
+    (lambda ()
+      (or devices
+          (begin
+            (set! devices (clGetDeviceIDs:vector (platform) 'CL_DEVICE_TYPE_GPU))
+            devices)))))
+(define device
+  (let ([device #f])
+    (lambda ()
+      (or device
+          (begin
+            (set! device (cvector-ref (devices) 0))
+            device)))))
 
 (define (cvector->vector cv)
   (build-vector (cvector-length cv)
                 (curry cvector-ref cv)))
 
 (define (with-opencl th)
-  (let* ([platform (cvector-ref (clGetPlatformIDs:vector) 0)]
-         [devices (clGetDeviceIDs:vector platform 'CL_DEVICE_TYPE_GPU)]
-         [device-idx 0])
-    (parameterize* ([context #f]
-                    [command-queue #f]
-                    [device (cvector-ref devices device-idx)])
-      (dynamic-wind
-       (λ ()
-         (context (clCreateContext #f (cvector->vector devices)))
-         (command-queue (clCreateCommandQueue (context) (device) '())))
-       th
-       (λ ()
-         (when (command-queue)
-           (clReleaseCommandQueue (command-queue)))
-         (when (context)
-           (clReleaseContext (context))))))))
+  (dynamic-wind
+   (λ ()
+     (unless (context)
+       (context (clCreateContext #f (cvector->vector (devices))))
+       (when (debug-kernel?)
+         (printf "Context reference count after creation: ~a~n"
+                 (clGetContextInfo:generic (context) 'CL_CONTEXT_REFERENCE_COUNT))))
+     (unless (command-queue)
+       (command-queue (clCreateCommandQueue (context) (device) '()))
+       (when (debug-kernel?)
+         (printf "CommandQueue reference count after creation: ~a~n"
+                 (clGetCommandQueueInfo:generic (command-queue)
+                                                'CL_QUEUE_REFERENCE_COUNT)))))
+   th
+   (λ ()
+     (when (command-queue)
+       (when (debug-kernel?)
+         (printf "CommandQueue reference count before release: ~a~n"
+                 (clGetCommandQueueInfo:generic (command-queue)
+                                                'CL_QUEUE_REFERENCE_COUNT)))
+       (clReleaseCommandQueue (command-queue))
+       (command-queue #f))
+     (when (context)
+       (when (debug-kernel?)
+         (printf "Context reference count before release: ~a~n"
+                 (clGetContextInfo:generic (context) 'CL_CONTEXT_REFERENCE_COUNT)))
+       (clReleaseContext (context))
+       (context #f)))))
 
 (define print-cl-build-log
   (λ (program _)
@@ -137,6 +169,8 @@ EOF
 (define (run-prim1-ρ! kernel-code
                       v0 off0 size0 stride0
                       v-out size-out stride-out)
+  (when (debug-kernel?)
+    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
       (let* ([buf0 #f]
@@ -229,6 +263,8 @@ EOF
 (define (run-prim1-∇! kernel-code g0
                       v0 off0 size0 stride0
                       vz offz size-z stride-z)
+  (when (debug-kernel?)
+    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
       (let* ([buf0 #f]
@@ -331,6 +367,8 @@ EOF
                       v0 off0 size0 stride0
                       v1 off1 size1 stride1
                       v-out size-out stride-out)
+  (when (debug-kernel?)
+    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
       (let* ([buf0 #f]
@@ -466,6 +504,8 @@ EOF
                       v0 off0 size0 stride0
                       v1 off1 size1 stride1
                       vz offz size-z stride-z)
+  (when (debug-kernel?)
+    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
       (let* ([global-work-size (max (/ size0 stride0)
@@ -571,6 +611,8 @@ EOF
     @{g}[@{i1}] += (@{db});
 EOF
            ))))))
+
+(include "test/test-2-acc-runtime.rkt")
 
 (provide run-prim1-ρ! functional->preallocated-1-ρ-acc ext1-ρ-kernel
          run-prim1-∇! functional->preallocated-1-∇-acc ext1-∇-kernel
