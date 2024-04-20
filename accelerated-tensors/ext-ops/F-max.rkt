@@ -35,9 +35,8 @@ EOF
       (for/fold ([max -inf.0]
                  [max-i -1] #:result
                  (for ([i (in-range i0 (+ i0 stride0))])
-                   (cond
-                     ((= i (+ i0 max-i)) (vset! g0 i z))
-                     (else (vset! g0 i 0.0)))))
+                   (when (= i (+ i0 max-i))
+                     (vset! g0 i (+ (vref g0 i) z)))))
                 ([i (in-range i0 (+ i0 stride0))])
         (let ((v (vref v0 i)))
           (cond
@@ -60,9 +59,9 @@ EOF
     }
     for(int i=@{i0}; i<@{i0}+@{stride0}; i++) {
         if(i == @{i0}+max_i) {
-            @{g0}[i] = z;
+            @{g0}[i] += z;
         } else {
-            @{g0}[i] = 0.0;
+            @{g0}[i] += 0.0;
         }
     }
 EOF
