@@ -22,7 +22,7 @@
 
 (define init-settings
   (λ ()
-    (settings (make-hash (read-preferences "local.cfg")))))
+    (settings (make-hash (read-preferences (or (getenv "MALT_PREFERENCES") "local.cfg"))))))
 
 ;;--------------------------------
 ;; Config params so far
@@ -47,6 +47,8 @@
     (debug-kernel? #f)))
 
 (when (not (settings))
-  (init-settings))
+  (init-settings)
+  (println "settings=")
+  (pretty-print (settings)))
 
 (provide tensor-implementation accelerate? debug-kernel?)
