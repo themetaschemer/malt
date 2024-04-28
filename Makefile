@@ -244,10 +244,12 @@ build: $(SOURCES)
 # Test it all
 test:
 	@ echo "Running tests ..." &&\
+	export MALT_PREFERENCES="$(shell pwd)/local.cfg";\
 	$(RACO) test $(TEST_FLAGS) $(SOURCES)
 
 one:
-	-@ $(RACO) make $(ARG) && $(RACO) test $(ARG)
+	-@ export MALT_PREFERENCES="$(shell pwd)/local.cfg";\
+	$(RACO) make $(ARG) && $(RACO) test $(ARG)
 
 clean:
 	find . -name 'compiled' | xargs -I% rm -rf %
