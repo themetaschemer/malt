@@ -36,9 +36,12 @@
   (build-vector (cvector-length cv)
                 (curry cvector-ref cv)))
 
+(define in-opencl (make-parameter 0))
 (define (with-opencl th)
   (dynamic-wind
    (λ ()
+     (in-opencl (add1 (in-opencl)))
+     (printf "###Nesting level: ~a~n" (in-opencl))
      (unless (context)
        (context (clCreateContext #f (cvector->vector (devices))))
        (when (debug-kernel?)
@@ -64,7 +67,8 @@
          (printf "Context reference count before release: ~a~n"
                  (clGetContextInfo:generic (context) 'CL_CONTEXT_REFERENCE_COUNT)))
        (clReleaseContext (context))
-       (context #f)))))
+       (context #f))
+     (in-opencl (sub1 (in-opencl))))))
 
 (define print-cl-build-log
   (λ (program _)
@@ -169,10 +173,10 @@ EOF
 (define (run-prim1-ρ! kernel-code
                       v0 off0 size0 stride0
                       v-out size-out stride-out)
-  (when (debug-kernel?)
-    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
+  	(when (debug-kernel?)
+	  (printf "Kernel Code:~n~a~n" kernel-code))
       (let* ([buf0 #f]
              [buf-out #f]
              [program #f]
@@ -200,7 +204,7 @@ EOF
                            ;; which makes the clBuildProgram function accept an
                            ;; additional callback argument for debugging just
                            ;; like the original C API.
-                           print-cl-build-log)
+                           #;print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf0)
            (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -263,10 +267,10 @@ EOF
 (define (run-prim1-∇! kernel-code g0
                       v0 off0 size0 stride0
                       vz offz size-z stride-z)
-  (when (debug-kernel?)
-    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
+  	(when (debug-kernel?)
+	  (printf "Kernel Code:~n~a~n" kernel-code))
       (let* ([buf0 #f]
              [buf-z #f]
              [buf-g #f]
@@ -295,7 +299,7 @@ EOF
                                                      (string->bytes/utf-8
                                                       kernel-code))))
            (clBuildProgram program (vector (device)) (make-bytes 0)
-                           print-cl-build-log)
+                           #;print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf-g)
            (clSetKernelArg:_cl_mem kernel 1 buf0)
@@ -367,10 +371,10 @@ EOF
                       v0 off0 size0 stride0
                       v1 off1 size1 stride1
                       v-out size-out stride-out)
-  (when (debug-kernel?)
-    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
+  	(when (debug-kernel?)
+	  (printf "Kernel Code:~n~a~n" kernel-code))
       (let* ([buf0 #f]
              [buf1 #f]
              [buf-out #f]
@@ -399,7 +403,7 @@ EOF
                            1
                            (string->bytes/utf-8 kernel-code))))
            (clBuildProgram program (vector (device)) (make-bytes 0)
-                           print-cl-build-log)
+                           #;print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf0)
            (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -504,10 +508,10 @@ EOF
                       v0 off0 size0 stride0
                       v1 off1 size1 stride1
                       vz offz size-z stride-z)
-  (when (debug-kernel?)
-    (printf "Kernel Code:~n~a~n" kernel-code))
   (with-opencl
     (λ ()
+  	(when (debug-kernel?)
+	  (printf "Kernel Code:~n~a~n" kernel-code))
       (let* ([global-work-size (max (/ size0 stride0)
                                     (/ size1 stride1))]
              [buf0 #f]
@@ -547,7 +551,7 @@ EOF
                           (context)
                           (make-vector 1 (string->bytes/utf-8 kernel-code))))
            (clBuildProgram program (vector (device)) (make-bytes 0)
-                           print-cl-build-log)
+                           #;print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf-g0)
            (clSetKernelArg:_cl_mem kernel 1 buf-g1)
