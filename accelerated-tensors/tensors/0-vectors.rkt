@@ -19,10 +19,10 @@
 (define vec->cpointer f32vector->cpointer)
 (define vref-cpointer
   (λ (v i)
-    (unless (< i (vlen v))
+    (unless (and (<= 0 i) (< i (vlen v)))
       (error 'vref-cpointer
              "Index ~a out of range [0, ~a]"
-             i (vlen v)))
+             i (sub1 (vlen v))))
     (ptr-add (vec->cpointer v) i _float)))
 
 (define-for-syntax debug-leaks? #f)

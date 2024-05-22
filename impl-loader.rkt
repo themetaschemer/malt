@@ -47,8 +47,6 @@
     (debug-kernel? #f)))
 
 (when (not (settings))
-  (init-settings)
-  (println "settings=")
-  (pretty-print (settings)))
+  (init-settings))
 
 (provide tensor-implementation accelerate? debug-kernel?)
