@@ -215,6 +215,7 @@
            (v-out (new-vec size-out 0.0)))
       (cond
         ((accelerate?) (run-prim1-ρ! (ext1-ρ-kernel f-acc)
+                                     (kernel-name f-acc)
                                      v0 off0 size0 stride0
                                      v-out size-out stride-out))
         (else
@@ -242,7 +243,7 @@
 
            (g0 (new-vec size0 0.0)))
       (cond
-        ((accelerate?) (run-prim1-∇! (ext1-∇-kernel fᵈ-acc) g0
+        ((accelerate?) (run-prim1-∇! (ext1-∇-kernel fᵈ-acc) (kernel-name fᵈ-acc) g0
                                      v0 off0 size0 stride0
                                      vz offz size-z stride-z))
         (else
@@ -273,10 +274,11 @@
         (λ (s-out size-out q0 q1 strides parallel-desc?)
           (let ((out-v (new-vec size-out 0.0)))
             (cond
-              ((accelerate?) (run-prim2-ρ! (ext2-ρ-kernel f-acc strides)
-                                           v0 off0 size0 stride0
-                                           v1 off1 size1 stride1
-                                           out-v size-out stride-out))
+              ((accelerate?)
+               (run-prim2-ρ! (ext2-ρ-kernel f-acc strides) (kernel-name f-acc)
+                             v0 off0 size0 stride0
+                             v1 off1 size1 stride1
+                             out-v size-out stride-out))
               (else
                (for ([out-i (in-range 0 size-out stride-out)])
                  (let-values (((i0 i1)
@@ -312,7 +314,7 @@
               ((accelerate?)
                (let ((kernel-code (ext2-∇-kernel fᵈ-acc strides s0 s1 r0 r1 sz
                                                  (length sf-z))))
-                 (run-prim2-∇! kernel-code
+                 (run-prim2-∇! kernel-code (kernel-name fᵈ-acc)
                                g0 g1
                                v0 off0 size0 stride0
                                v1 off1 size1 stride1
