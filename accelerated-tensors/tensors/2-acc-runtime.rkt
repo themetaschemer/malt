@@ -7,9 +7,32 @@
          "0-vectors.rkt"
          "../../impl-loader.rkt")
 
+;; TODO: Cache compiled kernels based on a unique prim name
 
-(define context (make-parameter #f))
-(define command-queue (make-parameter #f))
+(define context
+  (let ([context #f])
+    (λ ()
+      (or context
+          (begin
+            (set! context (clCreateContext #f (cvector->vector (devices))))
+            context)))))
+(define command-queue
+  (let ([command-queue #f])
+    (λ ()
+      (or command-queue
+          (begin
+            (set! command-queue (clCreateCommandQueue (context) (device) '()))
+            command-queue)))))
+
+(define old-exit-handler (exit-handler))
+(exit-handler
+ (λ (v)
+   (when (command-queue)
+     (clReleaseCommandQueue (command-queue)))
+   (when (context)
+     (clReleaseContext (context)))
+   (old-exit-handler v)))
+
 (define platform
   (let ([platform #f])
     (lambda ()
@@ -36,40 +59,8 @@
   (build-vector (cvector-length cv)
                 (curry cvector-ref cv)))
 
-(define in-opencl (make-parameter 0))
-(define (with-opencl th)
-  (dynamic-wind
-   (λ ()
-     (in-opencl (add1 (in-opencl)))
-     (printf "###Nesting level: ~a~n" (in-opencl))
-     (unless (context)
-       (context (clCreateContext #f (cvector->vector (devices))))
-       (when (debug-kernel?)
-         (printf "Context reference count after creation: ~a~n"
-                 (clGetContextInfo:generic (context) 'CL_CONTEXT_REFERENCE_COUNT))))
-     (unless (command-queue)
-       (command-queue (clCreateCommandQueue (context) (device) '()))
-       (when (debug-kernel?)
-         (printf "CommandQueue reference count after creation: ~a~n"
-                 (clGetCommandQueueInfo:generic (command-queue)
-                                                'CL_QUEUE_REFERENCE_COUNT)))))
-   th
-   (λ ()
-     (when (command-queue)
-       (when (debug-kernel?)
-         (printf "CommandQueue reference count before release: ~a~n"
-                 (clGetCommandQueueInfo:generic (command-queue)
-                                                'CL_QUEUE_REFERENCE_COUNT)))
-       (clReleaseCommandQueue (command-queue))
-       (command-queue #f))
-     (when (context)
-       (when (debug-kernel?)
-         (printf "Context reference count before release: ~a~n"
-                 (clGetContextInfo:generic (context) 'CL_CONTEXT_REFERENCE_COUNT)))
-       (clReleaseContext (context))
-       (context #f))
-     (in-opencl (sub1 (in-opencl))))))
-
+;; callback function to be used for debugging clBuildProgram if we expose that
+;; parameter in the opencl/c library source code.
 (define print-cl-build-log
   (λ (program _)
     (when (debug-kernel?)
@@ -152,9 +143,14 @@
     (values (/ size-rep-out size-rep0)
             (/ size-rep-out size-rep1))))
 
+(define kernel-name
+  (lambda (fn)
+    "kernel_@{(~a (eq-hash-code fn))}"))
+
 (define (ext1-ρ-kernel prim1-ρ-f)
   #<<EOF
-__kernel void Kernel (__global float* v0,
+
+__kernel void @{(kernel-name prim1-ρ-f)} (__global float* v0,
                       int stride0,
                       __global float* v_out,
                       int stride_out)
@@ -167,67 +163,60 @@ __kernel void Kernel (__global float* v0,
 @{(prim1-ρ-f "v0" "i0" "stride0" "v_out" "i_out" "stride_out")}
 
 }
+
 EOF
   )
 
-(define (run-prim1-ρ! kernel-code
+(define (run-prim1-ρ! kernel-code ker-name
                       v0 off0 size0 stride0
                       v-out size-out stride-out)
-  (with-opencl
-    (λ ()
-  	(when (debug-kernel?)
-	  (printf "Kernel Code:~n~a~n" kernel-code))
-      (let* ([buf0 #f]
-             [buf-out #f]
-             [program #f]
-             [kernel #f]
-             [event #f])
-        (dynamic-wind
-         (λ ()
-           (set! buf0 (clCreateBuffer (context)
-                                      '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                      (* (ctype-sizeof _cl_float)
-                                         size0)
-                                      (vref-cpointer v0 off0)))
-           (set! buf-out (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
-                                         (* (ctype-sizeof _cl_float)
-                                            size-out)
-                                         #f))
-           (set! program (clCreateProgramWithSource (context)
-                                                    (make-vector
-                                                     1
-                                                     (string->bytes/utf-8
-                                                      kernel-code))))
-           (clBuildProgram program (vector (device)) (make-bytes 0)
-                           ;; This extra argument works only because Darshal
-                           ;; uses a modified version of the opencl/c library
-                           ;; which makes the clBuildProgram function accept an
-                           ;; additional callback argument for debugging just
-                           ;; like the original C API.
-                           #;print-cl-build-log)
-           (set! kernel (clCreateKernel program #"Kernel"))
-           (clSetKernelArg:_cl_mem kernel 0 buf0)
-           (clSetKernelArg:_cl_int kernel 1 stride0)
-           (clSetKernelArg:_cl_mem kernel 2 buf-out)
-           (clSetKernelArg:_cl_int kernel 3 stride-out))
-         (λ ()
-           (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
-                                               (make-vector 1 (/ size-out stride-out))
-                                               (make-vector 0)
-                                               (make-vector 0)))
-           (set! event (clEnqueueReadBuffer (command-queue) buf-out 'CL_TRUE 0
-                                            (* (ctype-sizeof _cl_float)
-                                               size-out)
-                                            (vec->cpointer v-out) (vector event))))
-         (λ ()
-           (when kernel
-             (clReleaseKernel kernel))
-           (when program
-             (clReleaseProgram program))
-           (when buf-out
-             (clReleaseMemObject buf-out))
-           (when buf0
-             (clReleaseMemObject buf0))))))))
+  (when (debug-kernel?)
+    (printf "Kernel Code:~n~a~n" kernel-code))
+  (let* ([buf0 #f]
+         [buf-out #f]
+         [program #f]
+         [kernel #f]
+         [event #f])
+    (dynamic-wind
+     (λ ()
+       (set! buf0 (clCreateBuffer (context)
+                                  '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
+                                  (* (ctype-sizeof _cl_float)
+                                     size0)
+                                  (vref-cpointer v0 off0)))
+       (set! buf-out (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
+                                     (* (ctype-sizeof _cl_float)
+                                        size-out)
+                                     #f))
+       (set! program (clCreateProgramWithSource (context)
+                                                (make-vector
+                                                 1
+                                                 (string->bytes/utf-8
+                                                  kernel-code))))
+       (clBuildProgram program (vector (device)) (make-bytes 0))
+       (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
+       (clSetKernelArg:_cl_mem kernel 0 buf0)
+       (clSetKernelArg:_cl_int kernel 1 stride0)
+       (clSetKernelArg:_cl_mem kernel 2 buf-out)
+       (clSetKernelArg:_cl_int kernel 3 stride-out))
+     (λ ()
+       (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
+                                           (make-vector 1 (/ size-out stride-out))
+                                           (make-vector 0)
+                                           (make-vector 0)))
+       (set! event (clEnqueueReadBuffer (command-queue) buf-out 'CL_TRUE 0
+                                        (* (ctype-sizeof _cl_float)
+                                           size-out)
+                                        (vec->cpointer v-out) (vector event))))
+     (λ ()
+       (when kernel
+         (clReleaseKernel kernel))
+       (when program
+         (clReleaseProgram program))
+       (when buf-out
+         (clReleaseMemObject buf-out))
+       (when buf0
+         (clReleaseMemObject buf0))))))
 
 (define functional->preallocated-1-ρ-acc
   (λ (f-acc base-shape out-shape)
@@ -247,7 +236,8 @@ EOF
 
 (define (ext1-∇-kernel prim1-∇-f)
   #<<EOF
-__kernel void Kernel (__global float* g0,
+
+__kernel void @{(kernel-name prim1-∇-f)} (__global float* g0,
                       __global float* v0,
                       int stride0,
                       __global float* vz,
@@ -261,71 +251,71 @@ __kernel void Kernel (__global float* g0,
 @{(prim1-∇-f "g0" "v0" "i0" "stride0"
                   "vz" "iz" "stridez")}
 }
+
 EOF
   )
 
-(define (run-prim1-∇! kernel-code g0
+(define (run-prim1-∇! kernel-code ker-name g0
                       v0 off0 size0 stride0
                       vz offz size-z stride-z)
-  (with-opencl
-    (λ ()
-  	(when (debug-kernel?)
-	  (printf "Kernel Code:~n~a~n" kernel-code))
-      (let* ([buf0 #f]
-             [buf-z #f]
-             [buf-g #f]
-             [program #f]
-             [kernel #f]
-             [event #f])
-        (dynamic-wind
-         (λ ()
-           (set! buf0 (clCreateBuffer (context)
-                                      '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                      (* (ctype-sizeof _cl_float)
-                                         size0)
-                                      (vref-cpointer v0 off0)))
-           (set! buf-z (clCreateBuffer (context)
-                                       '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                       (* (ctype-sizeof _cl_float)
-                                          size-z)
-                                       (vref-cpointer vz offz)))
-           (set! buf-g (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
-                                       (* (ctype-sizeof _cl_float)
-                                          size0)
-                                       #f))
-           (set! program (clCreateProgramWithSource (context)
-                                                    (make-vector
-                                                     1
-                                                     (string->bytes/utf-8
-                                                      kernel-code))))
-           (clBuildProgram program (vector (device)) (make-bytes 0)
-                           #;print-cl-build-log)
-           (set! kernel (clCreateKernel program #"Kernel"))
-           (clSetKernelArg:_cl_mem kernel 0 buf-g)
-           (clSetKernelArg:_cl_mem kernel 1 buf0)
-           (clSetKernelArg:_cl_int kernel 2 stride0)
-           (clSetKernelArg:_cl_mem kernel 3 buf-z)
-           (clSetKernelArg:_cl_int kernel 4 stride-z))
-         (λ ()
-           (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
-                                               (make-vector 1 (/ size-z stride-z))
-                                               (make-vector 0)
-                                               (make-vector 0)))
-           (set! event (clEnqueueReadBuffer (command-queue) buf-g 'CL_TRUE 0
-                                            (* (ctype-sizeof _cl_float)
-                                               size0)
-                                            (vec->cpointer g0) (vector event))))
-         (λ ()
-           (when kernel
-             (clReleaseKernel kernel))
-           (when program
-             (clReleaseProgram program))
-           (when buf-g
-             (clReleaseMemObject buf-g))
-           (when buf-z
-             (clReleaseMemObject buf-z))
-           (when buf0
-             (clReleaseMemObject buf0))))))))
+  (when (debug-kernel?)
+    (printf "Kernel Code:~n~a~n" kernel-code))
+  (let* ([buf0 #f]
+         [buf-z #f]
+         [buf-g #f]
+         [program #f]
+         [kernel #f]
+         [event #f])
+    (dynamic-wind
+     (λ ()
+       (set! buf0 (clCreateBuffer (context)
+                                  '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
+                                  (* (ctype-sizeof _cl_float)
+                                     size0)
+                                  (vref-cpointer v0 off0)))
+       (set! buf-z (clCreateBuffer (context)
+                                   '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
+                                   (* (ctype-sizeof _cl_float)
+                                      size-z)
+                                   (vref-cpointer vz offz)))
+       (set! buf-g (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
+                                   (* (ctype-sizeof _cl_float)
+                                      size0)
+                                   #f))
+       (set! program (clCreateProgramWithSource (context)
+                                                (make-vector
+                                                 1
+                                                 (string->bytes/utf-8
+                                                  kernel-code))))
+       (clBuildProgram program (vector (device)) (make-bytes 0))
+       (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
+       (clSetKernelArg:_cl_mem kernel 0 buf-g)
+       (clSetKernelArg:_cl_mem kernel 1 buf0)
+       (clSetKernelArg:_cl_int kernel 2 stride0)
+       (clSetKernelArg:_cl_mem kernel 3 buf-z)
+       (clSetKernelArg:_cl_int kernel 4 stride-z))
+     (λ ()
+       (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
+                                           (make-vector 1 (/ size-z stride-z))
+                                           (make-vector 0)
+                                           (make-vector 0)))
+       (set! event (clEnqueueReadBuffer (command-queue) buf-g 'CL_TRUE 0
+                                        (* (ctype-sizeof _cl_float)
+                                           size0)
+                                        (vec->cpointer g0) (vector event))))
+     (λ ()
+       (when kernel
+         (clReleaseKernel kernel))
+       (when program
+         (clReleaseProgram program))
+       (when buf-g
+         (clReleaseMemObject buf-g))
+       (when buf-z
+         (clReleaseMemObject buf-z))
+       (when buf0
+         (clReleaseMemObject buf0))))
+    ;))
+    ))
 
 (define functional->preallocated-1-∇-acc
   (λ (f-acc base-shape out-shape)
@@ -348,7 +338,8 @@ EOF
   (let*-values (((generate-idxs) (idx-exprs strides 0 0))
                 ((i0-expr i1-expr) (generate-idxs "i_out")))
     #<<EOF
-__kernel void Kernel (__global float* v0,
+
+__kernel void @{(kernel-name prim2-ρ-f)} (__global float* v0,
                       int stride0,
                       __global float* v1,
                       int stride1,
@@ -364,17 +355,16 @@ __kernel void Kernel (__global float* v0,
              "v1" "i1" "stride1"
              "v_out" "i_out" "stride_out")}
 }
+
 EOF
     ))
 
-(define (run-prim2-ρ! kernel-code
+(define (run-prim2-ρ! kernel-code ker-name
                       v0 off0 size0 stride0
                       v1 off1 size1 stride1
                       v-out size-out stride-out)
-  (with-opencl
-    (λ ()
-  	(when (debug-kernel?)
-	  (printf "Kernel Code:~n~a~n" kernel-code))
+      (when (debug-kernel?)
+        (printf "Kernel Code:~n~a~n" kernel-code))
       (let* ([buf0 #f]
              [buf1 #f]
              [buf-out #f]
@@ -402,9 +392,8 @@ EOF
                           (make-vector
                            1
                            (string->bytes/utf-8 kernel-code))))
-           (clBuildProgram program (vector (device)) (make-bytes 0)
-                           #;print-cl-build-log)
-           (set! kernel (clCreateKernel program #"Kernel"))
+           (clBuildProgram program (vector (device)) (make-bytes 0))
+           (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
            (clSetKernelArg:_cl_mem kernel 0 buf0)
            (clSetKernelArg:_cl_int kernel 1 stride0)
            (clSetKernelArg:_cl_mem kernel 2 buf1)
@@ -430,7 +419,7 @@ EOF
            (when buf1
              (clReleaseMemObject buf1))
            (when buf0
-             (clReleaseMemObject buf0))))))))
+             (clReleaseMemObject buf0))))))
 
 (define functional->preallocated-2-ρ-acc
   (λ (f-acc t-shape u-shape out-shape)
@@ -462,7 +451,8 @@ EOF
                 ((i0-expr i1-expr) (generate-idxs "iz"))
                 ((iz-expr0 iz-expr1) (generate-idxs-inv "i0" "i1" "i_rep")))
     #<<EOF
-__kernel void Kernel (__global float* g0,
+
+__kernel void @{(kernel-name prim2-∇-f)} (__global float* g0,
                       __global float* g1,
                       __global float* v0,
                       int stride0,
@@ -501,17 +491,16 @@ __kernel void Kernel (__global float* g0,
         }
     }
 }
+
 EOF
     ))
 
-(define (run-prim2-∇! kernel-code g0 g1
+(define (run-prim2-∇! kernel-code ker-name g0 g1
                       v0 off0 size0 stride0
                       v1 off1 size1 stride1
                       vz offz size-z stride-z)
-  (with-opencl
-    (λ ()
-  	(when (debug-kernel?)
-	  (printf "Kernel Code:~n~a~n" kernel-code))
+      (when (debug-kernel?)
+        (printf "Kernel Code:~n~a~n" kernel-code))
       (let* ([global-work-size (max (/ size0 stride0)
                                     (/ size1 stride1))]
              [buf0 #f]
@@ -524,45 +513,44 @@ EOF
              [event #f])
         (dynamic-wind
          (λ ()
-           (set! buf0 (clCreateBuffer (context)
-                                      '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                      (* (ctype-sizeof _cl_float)
-                                         size0)
-                                      (vref-cpointer v0 off0)))
-           (set! buf1 (clCreateBuffer (context)
-                                      '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                      (* (ctype-sizeof _cl_float)
-                                         size1)
-                                      (vref-cpointer v1 off1)))
-           (set! buf-z (clCreateBuffer (context)
-                                       '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                       (* (ctype-sizeof _cl_float)
-                                          size-z)
-                                       (vref-cpointer vz offz)))
-           (set! buf-g0 (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
+             (set! buf0 (clCreateBuffer (context)
+                                        '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
                                         (* (ctype-sizeof _cl_float)
                                            size0)
-                                        #f))
-           (set! buf-g1 (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
+                                        (vref-cpointer v0 off0)))
+             (set! buf1 (clCreateBuffer (context)
+                                        '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
                                         (* (ctype-sizeof _cl_float)
                                            size1)
-                                        #f))
-           (set! program (clCreateProgramWithSource
-                          (context)
-                          (make-vector 1 (string->bytes/utf-8 kernel-code))))
-           (clBuildProgram program (vector (device)) (make-bytes 0)
-                           #;print-cl-build-log)
-           (set! kernel (clCreateKernel program #"Kernel"))
-           (clSetKernelArg:_cl_mem kernel 0 buf-g0)
-           (clSetKernelArg:_cl_mem kernel 1 buf-g1)
-           (clSetKernelArg:_cl_mem kernel 2 buf0)
-           (clSetKernelArg:_cl_int kernel 3 stride0)
-           (clSetKernelArg:_cl_int kernel 4 size0)
-           (clSetKernelArg:_cl_mem kernel 5 buf1)
-           (clSetKernelArg:_cl_int kernel 6 stride1)
-           (clSetKernelArg:_cl_int kernel 7 size1)
-           (clSetKernelArg:_cl_mem kernel 8 buf-z)
-           (clSetKernelArg:_cl_int kernel 9 stride-z))
+                                        (vref-cpointer v1 off1)))
+             (set! buf-z (clCreateBuffer (context)
+                                         '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
+                                         (* (ctype-sizeof _cl_float)
+                                            size-z)
+                                         (vref-cpointer vz offz)))
+             (set! buf-g0 (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
+                                          (* (ctype-sizeof _cl_float)
+                                             size0)
+                                          #f))
+             (set! buf-g1 (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
+                                          (* (ctype-sizeof _cl_float)
+                                             size1)
+                                          #f))
+             (set! program (clCreateProgramWithSource
+                            (context)
+                            (make-vector 1 (string->bytes/utf-8 kernel-code))))
+             (clBuildProgram program (vector (device)) (make-bytes 0))
+             (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
+             (clSetKernelArg:_cl_mem kernel 0 buf-g0)
+             (clSetKernelArg:_cl_mem kernel 1 buf-g1)
+             (clSetKernelArg:_cl_mem kernel 2 buf0)
+             (clSetKernelArg:_cl_int kernel 3 stride0)
+             (clSetKernelArg:_cl_int kernel 4 size0)
+             (clSetKernelArg:_cl_mem kernel 5 buf1)
+             (clSetKernelArg:_cl_int kernel 6 stride1)
+             (clSetKernelArg:_cl_int kernel 7 size1)
+             (clSetKernelArg:_cl_mem kernel 8 buf-z)
+             (clSetKernelArg:_cl_int kernel 9 stride-z))
          (λ ()
            (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                                (make-vector 1 global-work-size)
@@ -590,7 +578,7 @@ EOF
            (when buf1
              (clReleaseMemObject buf1))
            (when buf0
-             (clReleaseMemObject buf0))))))))
+             (clReleaseMemObject buf0))))))
 
 (define functional->preallocated-2-∇-acc
   (λ (f-acc t-shape u-shape out-shape)
@@ -621,4 +609,5 @@ EOF
 (provide run-prim1-ρ! functional->preallocated-1-ρ-acc ext1-ρ-kernel
          run-prim1-∇! functional->preallocated-1-∇-acc ext1-∇-kernel
          run-prim2-ρ! functional->preallocated-2-ρ-acc ext2-ρ-kernel
-         run-prim2-∇! functional->preallocated-2-∇-acc ext2-∇-kernel)
+         run-prim2-∇! functional->preallocated-2-∇-acc ext2-∇-kernel
+         kernel-name)
