@@ -4,6 +4,7 @@
          ffi/unsafe
          opencl/c
          string-interpolation
+         file/xxhash32
          "0-vectors.rkt"
          "../../impl-loader.rkt")
 
@@ -147,10 +148,10 @@
   (lambda (fn)
     "kernel_@{(~a (eq-hash-code fn))}"))
 
-(define (ext1-ρ-kernel prim1-ρ-f)
-  #<<EOF
-
-__kernel void @{(kernel-name prim1-ρ-f)} (__global float* v0,
+(define (ext1-ρ-kernel/name prim1-ρ-f prim-sign)
+  (values
+   #<<EOF
+__kernel void @{prim-sign} (__global float* v0,
                       int stride0,
                       __global float* v_out,
                       int stride_out)
@@ -163,9 +164,8 @@ __kernel void @{(kernel-name prim1-ρ-f)} (__global float* v0,
 @{(prim1-ρ-f "v0" "i0" "stride0" "v_out" "i_out" "stride_out")}
 
 }
-
 EOF
-  )
+   prim-sign))
 
 (define (run-prim1-ρ! kernel-code ker-name
                       v0 off0 size0 stride0
@@ -234,10 +234,10 @@ EOF
 EOF
         ))))
 
-(define (ext1-∇-kernel prim1-∇-f)
-  #<<EOF
-
-__kernel void @{(kernel-name prim1-∇-f)} (__global float* g0,
+(define (ext1-∇-kernel/name prim1-∇-f prim-sign)
+  (values
+   #<<EOF
+__kernel void @{prim-sign} (__global float* g0,
                       __global float* v0,
                       int stride0,
                       __global float* vz,
@@ -251,9 +251,8 @@ __kernel void @{(kernel-name prim1-∇-f)} (__global float* g0,
 @{(prim1-∇-f "g0" "v0" "i0" "stride0"
                   "vz" "iz" "stridez")}
 }
-
 EOF
-  )
+   prim-sign))
 
 (define (run-prim1-∇! kernel-code ker-name g0
                       v0 off0 size0 stride0
@@ -334,12 +333,30 @@ EOF
 EOF
         ))))
 
-(define (ext2-ρ-kernel prim2-ρ-f strides)
-  (let*-values (((generate-idxs) (idx-exprs strides 0 0))
-                ((i0-expr i1-expr) (generate-idxs "i_out")))
-    #<<EOF
+(define (strides-signature! ctx strides)
+  (for ((stride-vec strides))
+    (match-let* ((`#(,s1 ,s2 ,s3) (vector-map ~a stride-vec)))
+      (xxh32-update! ctx (string->bytes/utf-8 s1))
+      (xxh32-update! ctx #"_")
+      (xxh32-update! ctx (string->bytes/utf-8 s2))
+      (xxh32-update! ctx #"_")
+      (xxh32-update! ctx (string->bytes/utf-8 s3))
+      (xxh32-update! ctx #"#"))))
 
-__kernel void @{(kernel-name prim2-ρ-f)} (__global float* v0,
+(define (ext2-ρ-kernel-name prim-sign strides)
+  (define xxh32-ctx (make-xxh32))
+  (xxh32-reset! xxh32-ctx 0)
+  (strides-signature! xxh32-ctx strides)
+  (define strides-hash (xxh32-digest xxh32-ctx))
+  (format "~a_~a" prim-sign (~a strides-hash)))
+
+(define (ext2-ρ-kernel/name prim2-ρ-f prim-sign strides)
+  (let*-values (((generate-idxs) (idx-exprs strides 0 0))
+                ((i0-expr i1-expr) (generate-idxs "i_out"))
+                ((kernel-name) (ext2-ρ-kernel-name prim-sign strides)))
+    (values
+     #<<EOF
+__kernel void @{kernel-name} (__global float* v0,
                       int stride0,
                       __global float* v1,
                       int stride1,
@@ -355,9 +372,8 @@ __kernel void @{(kernel-name prim2-ρ-f)} (__global float* v0,
              "v1" "i1" "stride1"
              "v_out" "i_out" "stride_out")}
 }
-
 EOF
-    ))
+     kernel-name)))
 
 (define (run-prim2-ρ! kernel-code ker-name
                       v0 off0 size0 stride0
@@ -438,8 +454,27 @@ EOF
 EOF
         ))))
 
-(define (ext2-∇-kernel prim2-∇-f strides
-                       s0 s1 r0 r1 s-out r-out)
+(define (ext2-∇-kernel-name prim-sign strides
+                            s0 s1 r0 r1 s-out r-out)
+  (define xxh32-ctx (make-xxh32))
+  (xxh32-reset! xxh32-ctx 0)
+  (strides-signature! xxh32-ctx strides)
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (~a s0)))
+  (xxh32-update! xxh32-ctx #"_")
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (~a s1)))
+  (xxh32-update! xxh32-ctx #"_")
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (~a r0)))
+  (xxh32-update! xxh32-ctx #"_")
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (~a r1)))
+  (xxh32-update! xxh32-ctx #"_")
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (~a s-out)))
+  (xxh32-update! xxh32-ctx #"_")
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (~a r-out)))
+  (define params-hash (xxh32-digest xxh32-ctx))
+  (format "~a_~a" prim-sign (~a params-hash)))
+
+(define (ext2-∇-kernel/name prim2-∇-f prim-sign strides
+                            s0 s1 r0 r1 s-out r-out)
   (let*-values (((prim-effect0 prim-effect1) (prim2-∇-f "g"
                                                         "v0" "i0" "stride0"
                                                         "v1" "i1" "stride1"
@@ -449,10 +484,12 @@ EOF
                 ((generate-idxs-inv) (idx-exprs-inv strides 0
                                                     repeats0 repeats1 s-out))
                 ((i0-expr i1-expr) (generate-idxs "iz"))
-                ((iz-expr0 iz-expr1) (generate-idxs-inv "i0" "i1" "i_rep")))
-    #<<EOF
-
-__kernel void @{(kernel-name prim2-∇-f)} (__global float* g0,
+                ((iz-expr0 iz-expr1) (generate-idxs-inv "i0" "i1" "i_rep"))
+                ((kernel-name) (ext2-∇-kernel-name prim-sign strides
+                                                   s0 s1 r0 r1 s-out r-out)))
+    (values
+     #<<EOF
+__kernel void @{kernel-name} (__global float* g0,
                       __global float* g1,
                       __global float* v0,
                       int stride0,
@@ -491,9 +528,8 @@ __kernel void @{(kernel-name prim2-∇-f)} (__global float* g0,
         }
     }
 }
-
 EOF
-    ))
+     kernel-name)))
 
 (define (run-prim2-∇! kernel-code ker-name g0 g1
                       v0 off0 size0 stride0
@@ -539,7 +575,7 @@ EOF
              (set! program (clCreateProgramWithSource
                             (context)
                             (make-vector 1 (string->bytes/utf-8 kernel-code))))
-             (clBuildProgram program (vector (device)) (make-bytes 0))
+             (clBuildProgram program (vector (device)) (make-bytes 0) print-cl-build-log)
              (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
              (clSetKernelArg:_cl_mem kernel 0 buf-g0)
              (clSetKernelArg:_cl_mem kernel 1 buf-g1)
@@ -606,8 +642,8 @@ EOF
 
 (include "test/test-2-acc-runtime.rkt")
 
-(provide run-prim1-ρ! functional->preallocated-1-ρ-acc ext1-ρ-kernel
-         run-prim1-∇! functional->preallocated-1-∇-acc ext1-∇-kernel
-         run-prim2-ρ! functional->preallocated-2-ρ-acc ext2-ρ-kernel
-         run-prim2-∇! functional->preallocated-2-∇-acc ext2-∇-kernel
+(provide run-prim1-ρ! functional->preallocated-1-ρ-acc ext1-ρ-kernel/name
+         run-prim1-∇! functional->preallocated-1-∇-acc ext1-∇-kernel/name
+         run-prim2-ρ! functional->preallocated-2-ρ-acc ext2-ρ-kernel/name
+         run-prim2-∇! functional->preallocated-2-∇-acc ext2-∇-kernel/name
          kernel-name)
