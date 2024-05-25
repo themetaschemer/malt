@@ -16,13 +16,13 @@
 ;; to running code on the CPU .
 
 (define ext1-ρ
-  (λ (f f-acc m [shape-fn scalar-shape])
+  (λ (f f-acc m [shape-fn scalar-shape] [prim-sign (symbol->string (gensym 'e1r))])
     (λ (t)
       (cond
         ((number? t) (f t))
         ((expects-preallocated? f-acc)
          (scalarize
-          (flat-ext1-ρ f f-acc m shape-fn t)))
+          (flat-ext1-ρ f f-acc m shape-fn prim-sign t)))
         (else
          (let* ((in-shape (flat-shape t))
                 (base-shape (min-shape m in-shape))
@@ -30,15 +30,15 @@
                 (flat-f (functional->preallocated-1-ρ f base-shape out-shape))
                 (flat-f-acc (functional->preallocated-1-ρ-acc f-acc base-shape out-shape)))
            (scalarize
-            (flat-ext1-ρ flat-f flat-f-acc m shape-fn t))))))))
+            (flat-ext1-ρ flat-f flat-f-acc m shape-fn prim-sign t))))))))
 
 (define ext1-∇
-  (λ (f f-acc m [shape-fn scalar-shape])
+  (λ (f f-acc m [shape-fn scalar-shape] [prim-sign (symbol->string (gensym 'e1n))])
     (λ (t z)
       (cond
         ((number? t) (f t z))
         ((expects-preallocated? f-acc)
-         (scalarize (flat-ext1-∇ f f-acc m shape-fn t (ensure-flat z))))
+         (scalarize (flat-ext1-∇ f f-acc m shape-fn prim-sign t (ensure-flat z))))
         (else
          (let* ((in-shape (flat-shape t))
                 (base-shape (min-shape m in-shape))
@@ -47,7 +47,8 @@
                 (flat-f-acc (functional->preallocated-1-∇-acc
                              f-acc base-shape out-shape)))
          (scalarize (flat-ext1-∇ flat-f flat-f-acc m
-                                 shape-fn t (ensure-flat z)))))))))
+                                 shape-fn prim-sign
+                                 t (ensure-flat z)))))))))
 
 (define functional->preallocated-1-ρ
   (λ (f base-shape out-shape)
@@ -100,13 +101,13 @@
 ;;—————————————————–—————————————————–—————————————————–
 
 (define ext2-ρ
-  (λ (f f-acc m n [shape-fn scalar-shape])
+  (λ (f f-acc m n [shape-fn scalar-shape] [prim-sign (symbol->string (gensym 'e2r))])
     (λ (t u)
       (cond
         ((and (number? t) (number? u)) (f t u))
         ((expects-preallocated? f-acc)
          (scalarize
-          (flat-ext2-ρ f f-acc m n shape-fn t u)))
+          (flat-ext2-ρ f f-acc m n shape-fn prim-sign t u)))
         ((number? t)
          (let* ((t-shape '())
                 (u-shape (min-shape n (flat-shape u)))
@@ -114,7 +115,7 @@
                 (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape))
                 (flat-f-acc (functional->preallocated-2-ρ-acc f-acc t-shape u-shape out-shape)))
            (scalarize
-            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn (ensure-flat t) u))))
+            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn prim-sign (ensure-flat t) u))))
         ((number? u)
          (let* ((t-shape (min-shape m (flat-shape t)))
                 (u-shape '())
@@ -122,7 +123,7 @@
                 (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape))
                 (flat-f-acc (functional->preallocated-2-ρ-acc f-acc t-shape u-shape out-shape)))
            (scalarize
-            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn t (ensure-flat u)))))
+            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn prim-sign t (ensure-flat u)))))
         (else
          (let* ((t-shape (min-shape m (flat-shape t)))
                 (u-shape (min-shape n (flat-shape u)))
@@ -130,14 +131,14 @@
                 (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape))
                 (flat-f-acc (functional->preallocated-2-ρ-acc f-acc t-shape u-shape out-shape)))
            (scalarize
-            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn t u))))))))
+            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn prim-sign t u))))))))
 
 (define ext2-∇
-  (λ (f f-acc m n [shape-fn scalar-shape])
+  (λ (f f-acc m n [shape-fn scalar-shape] [prim-sign (symbol->string (gensym 'e2n))])
     (λ (t u z)
       (let ((invoke-flat-ext2-∇
              (λ (f f-acc m n shape-fn t u z)
-               (let-values (((da db) (flat-ext2-∇ f f-acc m n shape-fn t u z)))
+               (let-values (((da db) (flat-ext2-∇ f f-acc m n shape-fn prim-sign t u z)))
                  (values (scalarize da) (scalarize db))))))
       (cond
         ((and (number? t) (number? u)) (f t u z))
@@ -200,7 +201,7 @@
             out-f-shape)))
 
 (define flat-ext1-ρ
-  (λ (f f-acc min-rank shape-fn t0)
+  (λ (f f-acc min-rank shape-fn f-sign t0)
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
            (off0 (flat-offset t0))
@@ -214,10 +215,11 @@
            (size-out (size-of s-out))
            (v-out (new-vec size-out 0.0)))
       (cond
-        ((accelerate?) (run-prim1-ρ! (ext1-ρ-kernel f-acc)
-                                     (kernel-name f-acc)
-                                     v0 off0 size0 stride0
-                                     v-out size-out stride-out))
+        ((accelerate?)
+         (let-values (((kernel-code kernel-name) (ext1-ρ-kernel/name f-acc f-sign)))
+           (run-prim1-ρ! kernel-code kernel-name
+                         v0 off0 size0 stride0
+                         v-out size-out stride-out)))
         (else
          (for ([i-out (in-range 0 size-out stride-out)])
            (let ((i0 (+ off0 (* (/ i-out stride-out) stride0))))
@@ -225,7 +227,7 @@
       (flat s-out v-out 0))))
 
 (define flat-ext1-∇
-  (λ (fᵈ fᵈ-acc min-rank shape-fn t0 z)
+  (λ (fᵈ fᵈ-acc min-rank shape-fn fᵈ-sign t0 z)
     ;; z has the same shape as the output
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
@@ -243,9 +245,11 @@
 
            (g0 (new-vec size0 0.0)))
       (cond
-        ((accelerate?) (run-prim1-∇! (ext1-∇-kernel fᵈ-acc) (kernel-name fᵈ-acc) g0
-                                     v0 off0 size0 stride0
-                                     vz offz size-z stride-z))
+        ((accelerate?)
+         (let-values (((kernel-code kernel-name) (ext1-∇-kernel/name fᵈ-acc fᵈ-sign)))
+           (run-prim1-∇! kernel-code kernel-name g0
+                         v0 off0 size0 stride0
+                         vz offz size-z stride-z)))
         (else
          (for ([iz (in-range 0 size-z stride-z)])
            (let ((i0 (+ off0 (* (/ iz stride-z) stride0))))
@@ -253,7 +257,7 @@
       (flat s0 g0 0))))
 
 (define flat-ext2-ρ
-  (λ (f f-acc r0 r1 shape-fn t0 t1)
+  (λ (f f-acc r0 r1 shape-fn f-sign t0 t1)
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
            (off0 (flat-offset t0))
@@ -271,14 +275,16 @@
            (stride1 (size-of sf1))
            (stride-out (size-of sf-out)))
       (ext2-shapes s0 s1 r0 r1 sf-out
+                   ;;TODO: get rid of "parallel-desc?"
         (λ (s-out size-out q0 q1 strides parallel-desc?)
           (let ((out-v (new-vec size-out 0.0)))
             (cond
               ((accelerate?)
-               (run-prim2-ρ! (ext2-ρ-kernel f-acc strides) (kernel-name f-acc)
-                             v0 off0 size0 stride0
-                             v1 off1 size1 stride1
-                             out-v size-out stride-out))
+               (let-values (((kernel-code kernel-name) (ext2-ρ-kernel/name f-acc f-sign strides)))
+                 (run-prim2-ρ! kernel-code kernel-name
+                               v0 off0 size0 stride0
+                               v1 off1 size1 stride1
+                               out-v size-out stride-out)))
               (else
                (for ([out-i (in-range 0 size-out stride-out)])
                  (let-values (((i0 i1)
@@ -287,7 +293,7 @@
             (flat s-out out-v 0)))))))
 
 (define flat-ext2-∇
-  (λ (fᵈ fᵈ-acc r0 r1 shape-fn t0 t1 z)
+  (λ (fᵈ fᵈ-acc r0 r1 shape-fn fᵈ-sign t0 t1 z)
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
            (off0 (flat-offset t0))
@@ -312,9 +318,10 @@
                 (g1 (new-vec (size-of s1) 0.0)))
             (cond
               ((accelerate?)
-               (let ((kernel-code (ext2-∇-kernel fᵈ-acc strides s0 s1 r0 r1 sz
+               (let-values (((kernel-code kernel-name)
+                             (ext2-∇-kernel/name fᵈ-acc fᵈ-sign strides s0 s1 r0 r1 sz
                                                  (length sf-z))))
-                 (run-prim2-∇! kernel-code (kernel-name fᵈ-acc)
+                 (run-prim2-∇! kernel-code kernel-name
                                g0 g1
                                v0 off0 size0 stride0
                                v1 off1 size1 stride1
