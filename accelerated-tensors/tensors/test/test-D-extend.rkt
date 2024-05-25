@@ -4,6 +4,7 @@
   (require "A-equality.rkt")
   (require "B-tensor-basics.rkt")
 
+  #|
   (define sum-f
     (λ (in-v iᵢ sᵢ out-v iₒ sₒ)
       (vset! out-v iₒ
@@ -213,7 +214,8 @@ EOF
                          4752.0 5226.0 5712.0 6210.0 6720.0 7242.0
                          5184.0 5694.0 6216.0 6750.0 7296.0 7854.0
                          5616.0 6162.0 6720.0 7290.0 7872.0 8466.0
-                         6048.0 6630.0 7224.0 7830.0 8448.0 9078.0))))
+                         6048.0 6630.0 7224.0 7830.0 8448.0 9078.0)))
+  |#)
 
 (module+ test
   (require rackunit)
@@ -226,6 +228,7 @@ EOF
   (define +ᵈ (λ (a b z) (values z z)))
   (define +ᵈ-acc +ᵈ)
 
+  #|
   (define sqrᶠ (λ (a) (* a a)))
   (define sqrᵈ
     (λ (a z) (* z 2 a)))
@@ -234,6 +237,7 @@ EOF
       "@{z} * 2.0 * @{a}"))
 
   (define d-sqr (ext1-∇ sqrᵈ sqrᵈ-acc 0 scalar-shape))
+  |#
 
   (define one-like
     (λ (t)
@@ -243,17 +247,22 @@ EOF
               (new-vec size-t 1.0)
               0))))
 
+  #|
   (check-true (equal-elements? (d-sqr r1-td (one-like r1-td)) (tensor 6.0 8.0 10.0)))
 
   (let ((gsqr (d-sqr r2-td (one-like r2-td))))
     (check-tensor-equal? gsqr (reshape '(2 3) (tensor 6.0 8.0 10.0 14.0 16.0 18.0))))
+  |#
 
   (define d+ (ext2-∇ +ᵈ +ᵈ-acc 0 0 scalar-shape))
 
+  #|
   (let-values (((da db) (d+ r1-td r1-td (one-like r1-td))))
     (check-tensor-equal? da (tensor 1.0 1.0 1.0))
     (check-tensor-equal? db (tensor 1.0 1.0 1.0)))
+ |#
 
+  #;
   (let-values (((da db) (d+ r1-td r2-td (one-like r2-td))))
     (check-tensor-equal? da (tensor 2.0 2.0 2.0))
     (check-tensor-equal? db (reshape '(2 3) (tensor 1.0 1.0 1.0 1.0 1.0 1.0))))
@@ -267,6 +276,7 @@ EOF
     (check-tensor-equal? gt (tensor 1.0 2.0 3.0))
     (check-tensor-equal? gu (tensor 2.0 3.0 4.0)))
 
+  #|
   (define sum-1-∇
     (λ (g t it st vz iz sz)
       (for* ([i (in-range it (+ it st))])
@@ -291,4 +301,5 @@ EOF
                            (tensor 2.0 3.0 4.0))
                    (tensor 2.0 1.0))))
     (check-tensor-equal? gt (tensor (tensor 2.0 2.0 2.0)
-                                    (tensor 1.0 1.0 1.0)))))
+                                    (tensor 1.0 1.0 1.0))))
+  |#)

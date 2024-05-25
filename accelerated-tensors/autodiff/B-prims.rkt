@@ -19,6 +19,9 @@
 (define shape-fn
   (λ (f) (f shape-fn)))
 
+(define signature
+  (λ (f) (f signature)))
+
 ;; For flat tensors, ρ-fn and ∇-fn
 ;; are of two types: functional and pre-allocated
 ;; When they are functional, they return values
@@ -43,7 +46,8 @@
 (define prim1
   (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
     (let ((ρ-callable (ensure-ρ-callable-1 ρ-fn shape))
-          (∇-callable (ensure-∇-callable-1 ∇-fn shape)))
+          (∇-callable (ensure-∇-callable-1 ∇-fn shape))
+          (prim-sign (symbol->string (gensym 'prim1))))
       (λ (daf)
         (cond
           ((eq? daf ρ-function) ρ-fn)
@@ -51,6 +55,7 @@
           ((eq? daf ∇-function) ∇-fn)
           ((eq? daf ∇-acc-function) ∇-acc-fn)
           ((eq? daf shape-fn) shape)
+          ((eq? daf signature) prim-sign)
           (else (prim1-dual ρ-callable ∇-callable daf)))))))
 
 (define prim1-dual
@@ -64,7 +69,8 @@
 (define prim2
   (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
     (let ((ρ-callable (ensure-ρ-callable-2 ρ-fn shape))
-          (∇-callable (ensure-∇-callable-2 ∇-fn shape)))
+          (∇-callable (ensure-∇-callable-2 ∇-fn shape))
+          (prim-sign (symbol->string (gensym 'prim2))))
       (λ ds
         (let ((daf (ref ds 0)))
           (cond
@@ -73,6 +79,7 @@
             ((eq? daf ∇-function) ∇-fn)
             ((eq? daf ∇-acc-function) ∇-acc-fn)
             ((eq? daf shape-fn) shape)
+            ((eq? daf signature) prim-sign)
             (else (prim2-dual ρ-callable ∇-callable daf (ref ds 1)))))))))
 
 (define prim2-dual
@@ -214,21 +221,24 @@
 ;;----------------------------
 ;; Dualized tensor op creators
 ;;----------------------------
+
+;; TODO: Figure out the behaviour when we compose ext* with ext*. Currently we
+;; assume that "f" is always a non-extended primitive.
 (define ext1
   (λ (f n)
     (prim1
-     (ext1-ρ (ρ-function f) (ρ-acc-function f) n (shape-fn f))
+     (ext1-ρ (ρ-function f) (ρ-acc-function f) n (shape-fn f) (signature f))
      (ρ-acc-function f)
-     (ext1-∇ (∇-function f) (∇-acc-function f) n (shape-fn f))
+     (ext1-∇ (∇-function f) (∇-acc-function f) n (shape-fn f) (signature f))
      (∇-acc-function f)
      (shape-fn f))))
 
 (define ext2
   (λ (f m n)
     (prim2
-     (ext2-ρ (ρ-function f) (ρ-acc-function f) m n (shape-fn f))
+     (ext2-ρ (ρ-function f) (ρ-acc-function f) m n (shape-fn f) (signature f))
      (ρ-acc-function f)
-     (ext2-∇ (∇-function f) (∇-acc-function f) m n (shape-fn f))
+     (ext2-∇ (∇-function f) (∇-acc-function f) m n (shape-fn f) (signature f))
      (∇-acc-function f)
      (shape-fn f))))
 
