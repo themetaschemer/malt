@@ -94,10 +94,10 @@ EOF
   (define r1 1)
 
   (ext2-shapes s0 s1 r0 r1 '(5 6)
-     (λ (s-out size-out q0 q1 strides parallel-desc?)
+     (λ (s-out size-out q0 q1 strides)
        (check-equal? s-out '(3 4 7 5 6))
        (check-equal? size-out 2520)
-       (check-equal? strides '(#(840 120 42) #(210 30 0) #(30 0 6)))
+       (check-equal? (strides-strides strides) '(#(840 120 42) #(210 30 0) #(30 0 6)))
        (let-values (((i0 i1) (idxs strides 0 0 0)))
          (check-equal? i0 0)
          (check-equal? i1 0))

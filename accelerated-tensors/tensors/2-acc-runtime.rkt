@@ -6,7 +6,9 @@
          string-interpolation
          file/xxhash32
          "0-vectors.rkt"
-         "../../impl-loader.rkt")
+         "../../impl-loader.rkt"
+         "ext2-strides.rkt")
+
 
 ;; TODO: Implement MNIST as an example along with iris and morse
 
@@ -85,7 +87,7 @@
       (for/fold ([i0 (number->string i0)]
                  [i1 (number->string i1)]
                  [x out-i] #:result (values i0 i1))
-                ([stride strides])
+                ([stride (strides-strides strides)])
         (let ((stride-out (number->string (vector-ref stride 0)))
               (stride0 (number->string (vector-ref stride 1)))
               (stride1 (number->string (vector-ref stride 2))))
@@ -105,7 +107,7 @@
                           [predivisor-rep repeats]
                           [x i-in-var-str] #:result i-out)
                          ([desc-out s-out] ;; s-out == (append descents-out sf-out)
-                          [stride strides]) ;; (len strides) == (len descents-out)
+                          [stride (strides-strides strides)]) ;; (len strides) == (len descents-out)
                  (let ((stride-out (vector-ref stride 0))
                        (stride-in (vector-ref stride stride-i)))
                    (cond
@@ -341,23 +343,8 @@ EOF
 EOF
         ))))
 
-(define (strides-signature! ctx strides)
-  (xxh32-update!
-   ctx
-   (for/fold
-    ((result #""))
-    ((stride-vec strides))
-     (match-let* ((`#(,s1 ,s2 ,s3) stride-vec))
-       (bytes-append result
-                     (integer->integer-bytes s1 4 #f)
-                     (integer->integer-bytes s2 4 #f)
-                     (integer->integer-bytes s3 4 #f))))))
-
 (define (ext2-ρ-kernel-name prim-sign strides)
-  (xxh32-reset! xxh32-ctx 0)
-  (strides-signature! xxh32-ctx strides)
-  (define strides-hash (xxh32-digest xxh32-ctx))
-  (format "~a~a" prim-sign (~r strides-hash #:base 16)))
+  (format "~a~a" prim-sign (strides-signature strides)))
 
 ;;TODO: Memoize this
 (define (ext2-ρ-kernel/name prim2-ρ-f prim-sign strides)
@@ -471,7 +458,6 @@ EOF
 (define (ext2-∇-kernel-name prim-sign strides
                             s0 s1 r0 r1 s-out r-out)
   (xxh32-reset! xxh32-ctx 0)
-  (strides-signature! xxh32-ctx strides)
   (xxh32-update!
    xxh32-ctx
    (bytes-append (apply bytes-append
@@ -483,8 +469,9 @@ EOF
                  (apply bytes-append
                         (map (λ (x) (integer->integer-bytes x 4 #f)) s-out))
                  (integer->integer-bytes r-out 1 #f)))
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (strides-signature strides)))
   (define params-hash (xxh32-digest xxh32-ctx))
-  (format "~a~a" prim-sign (~r params-hash #:base 16)))
+  (format "~a~a" prim-sign params-hash))
 
 
 ;;TODO: Memoize this
