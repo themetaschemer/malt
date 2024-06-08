@@ -43,20 +43,27 @@
 ;; results.
 ;;
 
+;; Primitives need a unique identifier (its signature) which corresponds to a
+;; unique GPU kernel name. However, for the graphics driver in a 2017 macbook
+;; pro, the kernel name is limited to a length of 15 characters. This limitation
+;; therefore limits how many unique primitives can be created.
+
 (define prim1
-  (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
-    (let ((ρ-callable (ensure-ρ-callable-1 ρ-fn shape))
-          (∇-callable (ensure-∇-callable-1 ∇-fn shape))
-          (prim-sign (symbol->string (gensym 'prim1))))
-      (λ (daf)
-        (cond
-          ((eq? daf ρ-function) ρ-fn)
-          ((eq? daf ρ-acc-function) ρ-acc-fn)
-          ((eq? daf ∇-function) ∇-fn)
-          ((eq? daf ∇-acc-function) ∇-acc-fn)
-          ((eq? daf shape-fn) shape)
-          ((eq? daf signature) prim-sign)
-          (else (prim1-dual ρ-callable ∇-callable daf)))))))
+  (let ((id 0))
+    (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
+      (let ((ρ-callable (ensure-ρ-callable-1 ρ-fn shape))
+            (∇-callable (ensure-∇-callable-1 ∇-fn shape))
+            (prim-sign (string-append "p1" (~r id #:base 16))))
+        (set! id (add1 id))
+        (λ (daf)
+          (cond
+            ((eq? daf ρ-function) ρ-fn)
+            ((eq? daf ρ-acc-function) ρ-acc-fn)
+            ((eq? daf ∇-function) ∇-fn)
+            ((eq? daf ∇-acc-function) ∇-acc-fn)
+            ((eq? daf shape-fn) shape)
+            ((eq? daf signature) prim-sign)
+            (else (prim1-dual ρ-callable ∇-callable daf))))))))
 
 (define prim1-dual
   (λ (ρ-fn ∇-fn da)
@@ -67,20 +74,22 @@
             ((κ da) da ga σ)))))))
 
 (define prim2
-  (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
-    (let ((ρ-callable (ensure-ρ-callable-2 ρ-fn shape))
-          (∇-callable (ensure-∇-callable-2 ∇-fn shape))
-          (prim-sign (symbol->string (gensym 'prim2))))
-      (λ ds
-        (let ((daf (ref ds 0)))
-          (cond
-            ((eq? daf ρ-function) ρ-fn)
-            ((eq? daf ρ-acc-function) ρ-acc-fn)
-            ((eq? daf ∇-function) ∇-fn)
-            ((eq? daf ∇-acc-function) ∇-acc-fn)
-            ((eq? daf shape-fn) shape)
-            ((eq? daf signature) prim-sign)
-            (else (prim2-dual ρ-callable ∇-callable daf (ref ds 1)))))))))
+  (let ((id 0))
+    (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
+      (let ((ρ-callable (ensure-ρ-callable-2 ρ-fn shape))
+            (∇-callable (ensure-∇-callable-2 ∇-fn shape))
+            (prim-sign (string-append "p2" (~r id #:base 16))))
+        (set! id (add1 id))
+        (λ ds
+          (let ((daf (ref ds 0)))
+            (cond
+              ((eq? daf ρ-function) ρ-fn)
+              ((eq? daf ρ-acc-function) ρ-acc-fn)
+              ((eq? daf ∇-function) ∇-fn)
+              ((eq? daf ∇-acc-function) ∇-acc-fn)
+              ((eq? daf shape-fn) shape)
+              ((eq? daf signature) prim-sign)
+              (else (prim2-dual ρ-callable ∇-callable daf (ref ds 1))))))))))
 
 (define prim2-dual
   (λ (ρ-fn ∇-fn da db)
@@ -227,18 +236,22 @@
 (define ext1
   (λ (f n)
     (prim1
-     (ext1-ρ (ρ-function f) (ρ-acc-function f) n (shape-fn f) (signature f))
+     (ext1-ρ (ρ-function f) (ρ-acc-function f) n (shape-fn f)
+             (string-append "r" (signature f)))
      (ρ-acc-function f)
-     (ext1-∇ (∇-function f) (∇-acc-function f) n (shape-fn f) (signature f))
+     (ext1-∇ (∇-function f) (∇-acc-function f) n (shape-fn f)
+             (string-append "n" (signature f)))
      (∇-acc-function f)
      (shape-fn f))))
 
 (define ext2
   (λ (f m n)
     (prim2
-     (ext2-ρ (ρ-function f) (ρ-acc-function f) m n (shape-fn f) (signature f))
+     (ext2-ρ (ρ-function f) (ρ-acc-function f) m n (shape-fn f)
+             (string-append "r" (signature f)))
      (ρ-acc-function f)
-     (ext2-∇ (∇-function f) (∇-acc-function f) m n (shape-fn f) (signature f))
+     (ext2-∇ (∇-function f) (∇-acc-function f) m n (shape-fn f)
+             (string-append "n" (signature f)))
      (∇-acc-function f)
      (shape-fn f))))
 
