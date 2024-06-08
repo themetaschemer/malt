@@ -6,6 +6,7 @@
 (require "2-acc-runtime.ss")
 (require "B-tensor-basics.ss")
 (require "C-tensor-ops.ss")
+(require "ext2-strides.rkt")
 
 ;;—————————————————–—————————————————–—————————————————–
 ;; Unary Pointwise extension
@@ -208,7 +209,7 @@
     (for/fold ([i0 i0]
                [i1 i1]
                [x out-i] #:result (values i0 i1))
-              ([stride strides])
+              ([stride (strides-strides strides)])
       (let ((idx (quotient x (vector-ref stride 0)))
             (next-x (remainder x (vector-ref stride 0))))
         (values (+ i0 (* idx (vector-ref stride 1)))
@@ -295,8 +296,7 @@
            (stride1 (size-of sf1))
            (stride-out (size-of sf-out)))
       (ext2-shapes s0 s1 r0 r1 sf-out
-                   ;;TODO: get rid of "parallel-desc?"
-        (λ (s-out size-out q0 q1 strides parallel-desc?)
+        (λ (s-out size-out q0 q1 strides)
           (let ((out-v (new-vec size-out 0.0)))
             (cond
               ((accelerate?)
@@ -333,7 +333,7 @@
            (vz (flat-store z))
            (offz (flat-offset z)))
       (ext2-shapes s0 s1 r0 r1 sf-z
-        (λ (sz size-z q0 q1 strides parallel-desc?)
+        (λ (sz size-z q0 q1 strides)
           (let ((g0 (new-vec (size-of s0) 0.0))
                 (g1 (new-vec (size-of s1) 0.0)))
             (cond
@@ -353,77 +353,79 @@
             (values (flat s0 g0 0)
                     (flat s1 g1 0))))))))
 
-;;TODO: Memoize this
+;;TODO: Create a caching macro to generalize caching of functions
 (define ext2-shapes
-  (λ (s0 s1 r0 r1 sf-out k)
-    (let ((l0 (length s0))
-          (l1 (length s1)))
+  (let ((cache (make-hash)))
+    (λ (s0 s1 r0 r1 sf-out k)
+      (define cache-key (equal-hash-code (list s0 s1 r0 r1 sf-out)))
       (cond
-        ((and (= r0 l0) (= r1 l1))
-           (k sf-out
-              (size-of sf-out)
-              (size-of s0)
-              (size-of s1)
-              ;;TODO: Use a struct instead of a list of triples for strides. The
-              ;;strides struct should store the hash for the strides.
-              '()
-              #t))
+        [(hash-has-key? cache cache-key) (apply k (hash-ref cache cache-key))]
+        [else
+         (let ((l0 (length s0))
+               (l1 (length s1))
+               (k (λ args
+                    (hash-set! cache cache-key args)
+                    (apply k args))))
+           (cond
+             ((and (= r0 l0) (= r1 l1))
+              (k sf-out
+                 (size-of sf-out)
+                 (size-of s0)
+                 (size-of s1)
+                 strides-null))
 
-        ((= r0 l0)
-         (ext2-shapes s0 (cdr s1) r0 r1 sf-out
-           (desc-right (car s1) k)))
+             ((= r0 l0)
+              (ext2-shapes s0 (cdr s1) r0 r1 sf-out
+                (desc-right (car s1) k)))
 
-        ((= r1 l1)
-         (ext2-shapes (cdr s0) s1 r0 r1 sf-out
-           (desc-left (car s0) k)))
+             ((= r1 l1)
+              (ext2-shapes (cdr s0) s1 r0 r1 sf-out
+                (desc-left (car s0) k)))
 
-        ((and (not (null? s0))
-              (not (null? s1))
-              (= (car s0) (car s1)))
-         (ext2-shapes (cdr s0) (cdr s1) r0 r1 sf-out
-           (desc-both (car s0) k)))
+             ((and (not (null? s0))
+                   (not (null? s1))
+                   (= (car s0) (car s1)))
+              (ext2-shapes (cdr s0) (cdr s1) r0 r1 sf-out
+                (desc-both (car s0) k)))
 
-        ((> l1 l0)
-         (ext2-shapes s0 (cdr s1) r0 r1 sf-out
-           (desc-right (car s1) k)))
+             ((> l1 l0)
+              (ext2-shapes s0 (cdr s1) r0 r1 sf-out
+                (desc-right (car s1) k)))
 
-        ((> l0 l1)
-         (ext2-shapes (cdr s0) s1 r0 r1 sf-out
-           (desc-left (car s0) k)))
+             ((> l0 l1)
+              (ext2-shapes (cdr s0) s1 r0 r1 sf-out
+                (desc-left (car s0) k)))
 
-        (else (error 'ext
-               "Shapes are incompatible for ext2: ~a, and ~a for min ranks ~a, and ~a~%"
-               s0 s1 r0 r1))))))
+             (else (error 'ext
+                     "Shapes are incompatible for ext2: ~a, and ~a for min ranks ~a, and ~a~%"
+                     s0 s1 r0 r1))))]))))
 
 (define desc-both
   (λ (d k)
-    (λ (s-out qout q0 q1 strides parallel-desc?)
+    (λ (s-out qout q0 q1 strides)
       (k (cons d s-out)
          (* qout d)
          (* q0 d)
          (* q1 d)
-         (cons (vector qout q0 q1) strides)
-         parallel-desc?))))
+         (strides-cons qout q0 q1 strides)))))
 
 (define desc-left
   (λ (d k)
-    (λ (s-out qout q0 q1 strides parallel-desc?)
+    (λ (s-out qout q0 q1 strides)
       (k (cons d s-out)
          (* qout d)
          (* q0 d)
          q1
-         (cons (vector qout q0 0) strides)
-         #f))))
+         (strides-cons qout q0 0 strides)))))
 
 (define desc-right
   (λ (d k)
-    (λ (s-out qout q0 q1 strides parallel-desc?)
+    (λ (s-out qout q0 q1 strides)
       (k (cons d s-out)
          (* qout d)
          q0
          (* q1 d)
-         (cons (vector qout 0 q1) strides)
-         #f))))
+         (strides-cons qout 0 q1 strides)))))
 
 (define v-copy-flat!
   (λ (vg ig a)
