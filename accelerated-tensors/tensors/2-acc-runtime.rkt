@@ -346,13 +346,18 @@ EOF
 (define (ext2-ρ-kernel-name prim-sign strides)
   (format "~a~a" prim-sign (strides-signature strides)))
 
-;;TODO: Memoize this
-(define (ext2-ρ-kernel/name prim2-ρ-f prim-sign strides)
-  (let*-values (((generate-idxs) (idx-exprs strides 0 0))
-                ((i0-expr i1-expr) (generate-idxs "i_out"))
-                ((kernel-name) (ext2-ρ-kernel-name prim-sign strides)))
-    (values
-     #<<EOF
+(define ext2-ρ-kernel/name
+  (let ((cache (make-hash)))
+    (λ (prim2-ρ-f prim-sign strides)
+      (let ((kernel-name (ext2-ρ-kernel-name prim-sign strides)))
+        (cond
+          ((hash-has-key? cache kernel-name)
+           (values (hash-ref cache kernel-name) kernel-name))
+          (else
+           (let*-values (((generate-idxs) (idx-exprs strides 0 0))
+                         ((i0-expr i1-expr) (generate-idxs "i_out")))
+             (define kernel-code
+               #<<EOF
 __kernel void @{kernel-name} (__global float* v0,
                       int stride0,
                       __global float* v1,
@@ -360,7 +365,6 @@ __kernel void @{kernel-name} (__global float* v0,
                       __global float* v_out,
                       int stride_out)
 {
-
     int i_out = get_global_id(0) * stride_out;
     int i0 = @{i0-expr};
     int i1 = @{i1-expr};
@@ -370,7 +374,11 @@ __kernel void @{kernel-name} (__global float* v0,
              "v_out" "i_out" "stride_out")}
 }
 EOF
-     kernel-name)))
+               )
+             (hash-set! cache kernel-name kernel-code)
+             (values
+              kernel-code
+              kernel-name))))))))
 
 (define (run-prim2-ρ! kernel-code ker-name
                       v0 off0 size0 stride0
@@ -458,6 +466,7 @@ EOF
 (define (ext2-∇-kernel-name prim-sign strides
                             s0 s1 r0 r1 s-out r-out)
   (xxh32-reset! xxh32-ctx 0)
+  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (strides-signature strides)))
   (xxh32-update!
    xxh32-ctx
    (bytes-append (apply bytes-append
@@ -469,28 +478,32 @@ EOF
                  (apply bytes-append
                         (map (λ (x) (integer->integer-bytes x 4 #f)) s-out))
                  (integer->integer-bytes r-out 1 #f)))
-  (xxh32-update! xxh32-ctx (string->bytes/utf-8 (strides-signature strides)))
   (define params-hash (xxh32-digest xxh32-ctx))
   (format "~a~a" prim-sign params-hash))
 
 
-;;TODO: Memoize this
-(define (ext2-∇-kernel/name prim2-∇-f prim-sign strides
-                            s0 s1 r0 r1 s-out r-out)
-  (let*-values (((prim-effect0 prim-effect1) (prim2-∇-f "g"
-                                                        "v0" "i0" "stride0"
-                                                        "v1" "i1" "stride1"
-                                                        "vz" "iz" "stride_z"))
-                ((repeats0 repeats1) (calc-repeats s0 s1 r0 r1 s-out r-out))
-                ((generate-idxs) (idx-exprs strides 0 0))
-                ((generate-idxs-inv) (idx-exprs-inv strides 0
-                                                    repeats0 repeats1 s-out))
-                ((i0-expr i1-expr) (generate-idxs "iz"))
-                ((iz-expr0 iz-expr1) (generate-idxs-inv "i0" "i1" "i_rep"))
-                ((kernel-name) (ext2-∇-kernel-name prim-sign strides
-                                                   s0 s1 r0 r1 s-out r-out)))
-    (values
-     #<<EOF
+(define ext2-∇-kernel/name
+  (let ((cache (make-hash)))
+    (λ (prim2-∇-f prim-sign strides
+                  s0 s1 r0 r1 s-out r-out)
+      (let ((kernel-name (ext2-∇-kernel-name prim-sign strides
+                                             s0 s1 r0 r1 s-out r-out)))
+        (cond
+          ((hash-has-key? cache kernel-name)
+           (values (hash-ref cache kernel-name) kernel-name))
+          (else
+           (let*-values (((prim-effect0 prim-effect1) (prim2-∇-f "g"
+                                                                 "v0" "i0" "stride0"
+                                                                 "v1" "i1" "stride1"
+                                                                 "vz" "iz" "stride_z"))
+                         ((repeats0 repeats1) (calc-repeats s0 s1 r0 r1 s-out r-out))
+                         ((generate-idxs) (idx-exprs strides 0 0))
+                         ((generate-idxs-inv) (idx-exprs-inv strides 0
+                                                             repeats0 repeats1 s-out))
+                         ((i0-expr i1-expr) (generate-idxs "iz"))
+                         ((iz-expr0 iz-expr1) (generate-idxs-inv "i0" "i1" "i_rep")))
+             (define kernel-code
+              #<<EOF
 __kernel void @{kernel-name} (__global float* g0,
                       __global float* g1,
                       __global float* v0,
@@ -531,7 +544,11 @@ __kernel void @{kernel-name} (__global float* g0,
     }
 }
 EOF
-     kernel-name)))
+               )
+             (hash-set! cache kernel-name kernel-code)
+             (values
+              kernel-code
+              kernel-name))))))))
 
 (define (run-prim2-∇! kernel-code ker-name g0 g1
                       v0 off0 size0 stride0
