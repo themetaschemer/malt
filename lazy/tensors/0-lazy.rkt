@@ -172,102 +172,114 @@ instructions refering to the same gensym variable
 ;; argument. The signature argument is only supposed to be passed within the
 ;; definition of ext1 and ext2 functions in B-prims.rkt.
 (define tp-ext1-ρ
-  (λ (f m
-        [shape-fn scalar-shape]
-        [expects-prealloc? #f]
-        [signature (format "~a" f)])
-    (λ (tp)
-      (let* ((in-shape (tp-shape tp))
-             (base-shape (min-shape m in-shape))
-             (shape-fn-out (shape-fn base-shape))
-             (out-shape (merge-shapes in-shape m shape-fn-out)))
-        (cond
-          [(scalar? tp) (f tp)]
-          [(and (tpromise? tp)
-                (null? (tpromise-shape tp)))
-           (tpmake-ext1-ρ-scalar f signature tp out-shape)]
-          [expects-prealloc?
-           (tpmake-ext1-ρ f signature m shape-fn tp out-shape)]
-          [else
-           (let ((flat-f (functional->preallocated-1-ρ f base-shape shape-fn-out)))
-             (tpmake-ext1-ρ flat-f signature m shape-fn tp out-shape))])))))
+  (let ((id -1))
+    (λ (f m
+          [shape-fn scalar-shape]
+          [expects-prealloc? #f]
+          [prim-sign (begin
+                       (set! id (add1 id))
+                       (string-append "re1" (~r id #:base 16)))])
+      (λ (tp)
+        (let* ((in-shape (tp-shape tp))
+               (base-shape (min-shape m in-shape))
+               (shape-fn-out (shape-fn base-shape))
+               (out-shape (merge-shapes in-shape m shape-fn-out)))
+          (cond
+            [(scalar? tp) (f tp)]
+            [(and (tpromise? tp)
+                  (null? (tpromise-shape tp)))
+             (tpmake-ext1-ρ-scalar f prim-sign tp out-shape)]
+            [expects-prealloc?
+             (tpmake-ext1-ρ f prim-sign m shape-fn tp out-shape)]
+            [else
+             (let ((flat-f (functional->preallocated-1-ρ f base-shape shape-fn-out)))
+               (tpmake-ext1-ρ flat-f prim-sign m shape-fn tp out-shape))]))))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-ρ
-  (λ (f m n
+  (let ((id -1))
+    (λ (f m n
         [shape-fn scalar-shape]
         [expects-prealloc? #f]
-        [signature (format "~a" f)])
-    (λ (tp-t tp-u)
-      (let* ((s0 (tp-shape tp-t))
-             (s1 (tp-shape tp-u))
-             (sf0 (min-shape m s0))
-             (sf1 (min-shape n s1))
-             (sf-out (shape-fn sf0 sf1)))
-        (cond
-          ((and (number? tp-t) (number? tp-u))
-           (f tp-t tp-u))
-          [(and (tpromise? tp-t) (tpromise? tp-u)
-                (null? (tpromise-shape tp-t))
-                (null? (tpromise-shape tp-u)))
-           (tpmake-ext2-ρ-scalar f signature tp-t tp-u sf-out)]
-          [expects-prealloc?
-           (tpmake-ext2-ρ
-            tp-t tp-u
-            f signature m n shape-fn
-            (ext2-shapes s0 s1 m n sf-out
-                         (λ (s-out . _) s-out)))]
-          [else
-           (let ((flat-f (functional->preallocated-2-ρ
-                          f sf0 sf1 sf-out)))
+        [prim-sign (begin
+                     (set! id (add1 id))
+                     (string-append "re2" (~r id #:base 16)))])
+      (λ (tp-t tp-u)
+        (let* ((s0 (tp-shape tp-t))
+               (s1 (tp-shape tp-u))
+               (sf0 (min-shape m s0))
+               (sf1 (min-shape n s1))
+               (sf-out (shape-fn sf0 sf1)))
+          (cond
+            ((and (number? tp-t) (number? tp-u))
+             (f tp-t tp-u))
+            [(and (tpromise? tp-t) (tpromise? tp-u)
+                  (null? (tpromise-shape tp-t))
+                  (null? (tpromise-shape tp-u)))
+             (tpmake-ext2-ρ-scalar f prim-sign tp-t tp-u sf-out)]
+            [expects-prealloc?
              (tpmake-ext2-ρ
               tp-t tp-u
-              flat-f signature m n shape-fn
+              f prim-sign m n shape-fn
               (ext2-shapes s0 s1 m n sf-out
-                           (λ (s-out . _) s-out))))])))))
+                           (λ (s-out . _) s-out)))]
+            [else
+             (let ((flat-f (functional->preallocated-2-ρ
+                            f sf0 sf1 sf-out)))
+               (tpmake-ext2-ρ
+                tp-t tp-u
+                flat-f prim-sign m n shape-fn
+                (ext2-shapes s0 s1 m n sf-out
+                             (λ (s-out . _) s-out))))]))))))
 
 (define scalar-shape
   (λ (s0 [s1 '()]) '()))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext1-∇
-  (λ (f m
+  (let ((id -1))
+    (λ (f m
         [shape-fn scalar-shape]
         [expects-prealloc? #f]
-        [signature (format "~a" f)])
-    (λ (tp zp)
-      ;;
-      (cond
-        ((number? tp) (f tp zp))
-        (expects-prealloc?
-         (tpmake-ext1-∇ tp zp f signature m shape-fn (tp-shape tp)))
-        (else
-         (let* ((in-shape (tpromise-shape tp))
-                (base-shape (min-shape m in-shape))
-                (out-shape (shape-fn base-shape))
-                (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-           (tpmake-ext1-∇ tp zp flat-f signature m shape-fn (tp-shape tp))))))))
+        [prim-sign (begin
+                     (set! id (add1 id))
+                     (string-append "ne1" (~r id #:base 16)))])
+      (λ (tp zp)
+        ;;
+        (cond
+          ((number? tp) (f tp zp))
+          (expects-prealloc?
+           (tpmake-ext1-∇ tp zp f prim-sign m shape-fn (tp-shape tp)))
+          (else
+           (let* ((in-shape (tpromise-shape tp))
+                  (base-shape (min-shape m in-shape))
+                  (out-shape (shape-fn base-shape))
+                  (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
+             (tpmake-ext1-∇ tp zp flat-f prim-sign m shape-fn (tp-shape tp)))))))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-∇
-  (λ (f m n
+  (let ((id -1))
+    (λ (f m n
         [shape-fn scalar-shape]
         [expects-prealloc? #f]
-        [signature (format "~a" f)])
-    (let ((tp-f
-           (λ (f tp-t tp-u tp-z)
-             (tp-d-ext2^ f signature m n shape-fn
-                         tp-t tp-u tp-z))))
-      (λ (tp-t tp-u tp-z)
-        (cond
-          (expects-prealloc?
-           (tp-f f tp-t tp-u tp-z))
-          [else (let* ((t-shape (min-shape m (tp-shape tp-t)))
-                       (u-shape (min-shape n (tp-shape tp-u)))
-                       (out-shape (shape-fn t-shape u-shape))
-                       (flat-f (functional->preallocated-2-∇
-                                f t-shape u-shape out-shape)))
-                  (tp-f flat-f tp-t tp-u tp-z))])))))
+        [prim-sign (begin
+                     (set! id (add1 id))
+                     (string-append "ne2" (~r id #:base 16)))])
+      (let ((tp-f
+             (λ (f tp-t tp-u tp-z)
+               (tp-d-ext2^ f prim-sign m n shape-fn
+                           tp-t tp-u tp-z))))
+        (λ (tp-t tp-u tp-z)
+          (cond
+            (expects-prealloc?
+             (tp-f f tp-t tp-u tp-z))
+            [else (let* ((t-shape (min-shape m (tp-shape tp-t)))
+                         (u-shape (min-shape n (tp-shape tp-u)))
+                         (out-shape (shape-fn t-shape u-shape))
+                         (flat-f (functional->preallocated-2-∇
+                                  f t-shape u-shape out-shape)))
+                    (tp-f flat-f tp-t tp-u tp-z))]))))))
 
 (define tp-d-ext2^
   (λ (fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z)
