@@ -8,11 +8,13 @@
                               (apply (prim-proc this) args)))
 
 (define prim1
-  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
-    (let ((prim-sign (symbol->string (gensym 'prim1))))
-      (prim ρ-fn ∇-fn shape prim-sign expects-prealloc?
-            (λ (da)
-              (prim1-dual ρ-fn ∇-fn da))))))
+  (let ((id 0))
+    (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
+      (let ((prim-sign (string-append "p1" (~r id #:base 16))))
+        (set! id (add1 id))
+        (prim ρ-fn ∇-fn shape prim-sign expects-prealloc?
+              (λ (da)
+                (prim1-dual ρ-fn ∇-fn da)))))))
 
 (define prim1-dual
   (λ (ρ-fn ∇-fn da)
@@ -24,11 +26,13 @@
                      ((κ da) da ga σ))))))))
 
 (define prim2
-  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
-    (let ((prim-sign (symbol->string (gensym 'prim2))))
-      (prim ρ-fn ∇-fn shape prim-sign expects-prealloc?
-            (λ (da db)
-              (prim2-dual ρ-fn ∇-fn da db))))))
+  (let ((id 0))
+    (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
+      (let ((prim-sign (string-append "p2" (~r id #:base 16))))
+        (set! id (add1 id))
+        (prim ρ-fn ∇-fn shape prim-sign expects-prealloc?
+              (λ (da db)
+                (prim2-dual ρ-fn ∇-fn da db)))))))
 
 (define prim2-dual
   (λ (ρ-fn ∇-fn da db)
