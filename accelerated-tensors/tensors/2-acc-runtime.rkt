@@ -12,6 +12,7 @@
 
 ;; TODO: Implement MNIST as an example along with iris and morse
 
+(define local-work-size (make-parameter #f))
 (define xxh32-ctx (make-xxh32))
 
 (define context
@@ -207,9 +208,10 @@ EOF
        (clSetKernelArg:_cl_mem kernel 2 buf-out)
        (clSetKernelArg:_cl_int kernel 3 stride-out))
      (λ ()
+       ;;TODO: Try using the local-work-size argument
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 (/ size-out stride-out))
-                                           (make-vector 0)
+                                           (or (local-work-size) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-out 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -306,7 +308,7 @@ EOF
      (λ ()
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 (/ size-z stride-z))
-                                           (make-vector 0)
+                                           (or (local-work-size) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-g 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -428,7 +430,7 @@ EOF
      (λ ()
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 (/ size-out stride-out))
-                                           (make-vector 0)
+                                           (or (local-work-size) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-out 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -614,7 +616,7 @@ EOF
      (λ ()
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 global-work-size)
-                                           (make-vector 0)
+                                           (or (local-work-size) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-g0 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)

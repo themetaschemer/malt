@@ -135,7 +135,7 @@
     (cond
       ((expects-preallocated? ∇-fn)
        (λ (ra rb z)
-         (apply-flat-∇-fn-1 ∇-fn ra rb z shape-fn)))
+         (apply-flat-∇-fn-2 ∇-fn ra rb z shape-fn)))
       (else ∇-fn))))
 
 (define apply-flat-ρ-fn-1
