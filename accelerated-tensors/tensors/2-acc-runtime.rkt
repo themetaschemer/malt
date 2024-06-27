@@ -211,7 +211,7 @@ EOF
        ;;TODO: Try using the local-work-size argument
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 (/ size-out stride-out))
-                                           (or (local-work-size) (make-vector 0))
+                                           (if (local-work-size) (make-vector 1 (local-work-size)) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-out 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -308,7 +308,7 @@ EOF
      (λ ()
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 (/ size-z stride-z))
-                                           (or (local-work-size) (make-vector 0))
+                                           (if (local-work-size) (make-vector 1 (local-work-size)) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-g 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -430,7 +430,7 @@ EOF
      (λ ()
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 (/ size-out stride-out))
-                                           (or (local-work-size) (make-vector 0))
+                                           (if (local-work-size) (make-vector 1 (local-work-size)) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-out 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -616,7 +616,7 @@ EOF
      (λ ()
        (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
                                            (make-vector 1 global-work-size)
-                                           (or (local-work-size) (make-vector 0))
+                                           (if (local-work-size) (make-vector 1 (local-work-size)) (make-vector 0))
                                            (make-vector 0)))
        (set! event (clEnqueueReadBuffer (command-queue) buf-g0 'CL_TRUE 0
                                         (* (ctype-sizeof _cl_float)
@@ -672,4 +672,4 @@ EOF
          run-prim1-∇! functional->preallocated-1-∇-acc ext1-∇-kernel/name
          run-prim2-ρ! functional->preallocated-2-ρ-acc ext2-ρ-kernel/name
          run-prim2-∇! functional->preallocated-2-∇-acc ext2-∇-kernel/name
-         kernel-name)
+         kernel-name local-work-size)
