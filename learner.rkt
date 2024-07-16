@@ -13,6 +13,8 @@
     (error "ext2-∇ is not provided by the learner implementation")))
 
 (provide
+ tolerance
+
  len ref refr
 
  tref tlen tmap list->tensor tensor build-tensor
