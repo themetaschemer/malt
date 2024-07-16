@@ -50,7 +50,9 @@
           ((eq? data 'reset)
            (loop 0.0 0.0 0.0 0.0 0.0 0 sampling-frequency))
           ((and data (= sampling-count 1))
-           (print-average (/ (sum-all d0 d1 d2 d3 d4 data) (* 6 (ρ (product (shape data))))) count)
+           (print-average (/ (ρ (sum-all d0 d1 d2 d3 d4 data))
+                             (* 6 (ρ (product (shape data)))))
+                          count)
            (loop d1 d2 d3 d4 data (add1 count) sampling-frequency))
           (data
            (loop d1 d2 d3 d4 data (add1 count) (sub1 sampling-count)))
