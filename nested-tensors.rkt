@@ -8,6 +8,8 @@
 (require "nested-tensors/ext-ops.rkt")
 
 (provide
+ tolerance
+
  len ref refr
 
  tref tlen tmap list->tensor tensor build-tensor
