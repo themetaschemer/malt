@@ -1,7 +1,6 @@
 #lang racket
 
 (require "../base.rkt")
-;; TODO: This is not implementation independent. Figure out a fix
 (require (only-in "../lazy/tensors.rkt" ↓))
 
 (define dot-product

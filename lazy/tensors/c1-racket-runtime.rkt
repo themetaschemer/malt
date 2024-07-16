@@ -79,7 +79,6 @@
 
 (define-namespace-anchor a)
 (define runtime
-  ;;TODO explicitly declare the names being included in this namespace
   (namespace-anchor->namespace a))
 
 (provide runtime flat? flat:build-tensor flat:list->tensor

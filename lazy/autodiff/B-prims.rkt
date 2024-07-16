@@ -7,11 +7,6 @@
   #:property prop:procedure (λ (this . args)
                               (apply (prim-proc this) args)))
 
-;;TODO: move expects-preallocated?, functional->preallocated-1-ρ,
-;;functional->preallocated-1-∇, functional->preallocated-2-ρ,
-;;functional->preallocated-2-∇ here because they depend on the representation of
-;;prims
-
 (define prim1
   (λ (ρ-fn ∇-fn [shape (λ (l . r) l)] [expects-prealloc? #f])
     (let ((prim-sign (symbol->string (gensym 'prim1))))
