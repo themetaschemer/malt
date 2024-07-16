@@ -12,12 +12,30 @@
 (declare-hyper revs)
 (declare-hyper alpha)
 
+;;TODO: abstract away the lazy implementation specific ↓ using a with-aspect
+
+;; For lazy implementation
+#;
+(define-syntax with-aspect
+  (syntax-rules ()
+    [(_ 'gd-update f)
+     (lambda (pa g) (map* ↓ (f pa g)))]
+    [(_ _ f) f]))
+
+;; For other implementations
+#;
+(define-syntax with-aspect
+  (syntax-rules ()
+    [(_ _ f)
+     f]))
+
 (define gradient-descent
   (lambda (inflate deflate update)
     (λ (obj theta)
       (let ((ctr 0))
         (let ((f (λ (big-theta)
-                   (map (λ (pa g) (map* ↓ (update pa g)))
+                   (map #;(with-aspect 'gd-update update)
+                        (lambda (pa g) (map* ↓ (update pa g)))
                      big-theta
                      (gradient-of obj
                        (map deflate big-theta))))))
