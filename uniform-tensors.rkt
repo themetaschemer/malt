@@ -8,6 +8,8 @@
 (require "uniform-tensors/ext-ops.rkt")
 
 (provide
+ tolerance
+
  len ref refr
 
  tref tlen list->tensor tensor build-tensor

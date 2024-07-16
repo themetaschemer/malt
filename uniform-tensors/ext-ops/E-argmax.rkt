@@ -8,7 +8,7 @@
   (λ (v0 i0 stride0
       v-out i-out stride-out)
     (vset! v-out i-out
-      (for/fold ([max 0.0]
+      (for/fold ([max -inf.0]
                  [max-i -1] #:result max-i)
           ([i (in-range i0 (+ i0 stride0))])
         (let ((v (vref v0 i)))
