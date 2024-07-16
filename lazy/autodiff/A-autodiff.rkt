@@ -22,7 +22,7 @@
   (λ (d)
     (cond
       ((dual? d) (scalarize (vector-ref d 1)))
-      (else d))))
+      (else (scalarize d)))))
 
 (define κ
   (λ (d)
