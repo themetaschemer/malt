@@ -40,6 +40,11 @@
     (λ (a z)
       (* z (/ 1 a)))))
 
+(define sqrt-0
+  (prim1 sqrt
+    (λ (x z)
+      (/ z (* 2 (sqrt x))))))
+
 (define abs-0-ρ
   (λ (x)
     (cond
@@ -87,10 +92,7 @@
 (define d-log (ext1 log-0 0))
 (define d-abs (ext1 abs-0 0))
 (define d-rectify (ext1 rectify-0 0))
-
-(define d-sqrt
-  (λ (a)
-    (d-expt a 1/2)))
+(define d-sqrt (ext1 sqrt-0 0))
 
 (define d-sqr
   (λ (x)
@@ -122,7 +124,7 @@
 (include "test/test-A-scalar-ops.rkt")
 
 (provide +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
-         exp-0 log-0 abs-0 rectify-0
+         exp-0 log-0 sqrt-0 abs-0 rectify-0
 
          d+ d- d* d/
          d-expt d-exp d-log d-abs

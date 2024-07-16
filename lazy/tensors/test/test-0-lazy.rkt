@@ -67,6 +67,10 @@
   (define sum (tp-ext1-ρ sum-f 1))
   (check-equal? (flat-store (tp-force (sum test-nested-lt))) (vec 6.0 15.0))
 
+  (define id-f (lambda (v) v))
+  (define id-ρ (tp-ext1-ρ id-f 1 (λ (s) s)))
+  (check-equal? (flat-store (tp-force (id-ρ test-nested-lt))) (vec 1 2 3 4 5 6))
+
   (define t0
     (build-tpromise '(2 3 4)
                     (λ (i)

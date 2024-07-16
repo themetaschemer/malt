@@ -11,8 +11,7 @@
 
 (provide ext1-ρ ext2-ρ ext1-∇ ext2-∇)
 
-;; TODO: figure out why was this exported in flat-tensors
-;;(provide flat? flat-shape flat-store flat-offset size-of strides)
+(provide tp-force)
 
 ;; These will get overriden by duals
 (provide tensor?)

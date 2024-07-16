@@ -21,13 +21,15 @@
 (define ρ
   (λ (d)
     (cond
-      ((dual? d) (vector-ref d 1))
+      ((dual? d) (tp-force (vector-ref d 1))
+                 (vector-ref d 1))
       (else d))))
 
 (define κ
   (λ (d)
     (cond
-      ((dual? d) (vector-ref d 2))
+      ((dual? d) (tp-force (vector-ref d 2))
+                 (vector-ref d 2))
       (else end-of-chain))))
 
 (define scalar?
@@ -117,4 +119,4 @@
 
 (provide
   dual dual? ρ κ ∇ ∇¹ dual* scalar? end-of-chain
-  trace-print)
+  trace-print map*)
