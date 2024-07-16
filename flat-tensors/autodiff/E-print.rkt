@@ -80,4 +80,7 @@
 (include "test/test-E-print.rkt")
 
 (provide max-tensor-print-length
-         make-printable)
+         make-printable
+         ;; This is used in ext-impl.rkt
+         make-printable-flat
+         fake-tensor)
