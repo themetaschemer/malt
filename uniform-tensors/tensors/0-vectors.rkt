@@ -47,7 +47,15 @@
           [is (in-range isrc (+ n isrc))])
       (vset! dest id (vref src is)))))
 
-(provide vec? vec vref vset! vlen vcopy list->vec build-vec vec->cpointer vref-cpointer new-vec)
+(define print-vec
+  (λ (v (off 0) (port (current-output-port)))
+    (fprintf port "#(")
+    (for ((i (in-range off (vlen v))))
+      (fprintf port "~a " (vref v i)))
+    (fprintf port ")")))
+
+(provide vec? vec vref vset! vlen vcopy print-vec
+         list->vec build-vec vec->cpointer vref-cpointer new-vec)
 
 ;;------------------------------------------------
 ;; Memory management for flat-vectors
