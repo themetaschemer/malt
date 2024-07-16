@@ -10,11 +10,52 @@ TEST_FLAGS=-q
 # add sources be sure to update this section.
 #----------------------------------------
 
+LAZY_DIR=lazy
 LEARNER_DIR=learner
 FLAT_DIR=flat-tensors
 NESTED_DIR=nested-tensors
 TOOLS_DIR=tools
 MALTED_DIR=malted
+
+# lazy
+LAZY_TENSORS_DIR=$(LAZY_DIR)/tensors
+LAZY_AUTODIFF_DIR=$(LAZY_DIR)/autodiff
+LAZY_EXT_OPS_DIR=$(LAZY_DIR)/ext-ops
+
+LAZY_TENSORS_SOURCES=\
+  $(LAZY_TENSORS_DIR)/0-lazy.rkt\
+  $(LAZY_TENSORS_DIR)/A-equality.rkt\
+  $(LAZY_DIR)/tensors.rkt
+
+LAZY_AUTODIFF_SOURCES=\
+  $(LAZY_AUTODIFF_DIR)/A-autodiff.rkt\
+  $(LAZY_AUTODIFF_DIR)/B-prims.rkt\
+  $(LAZY_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(LAZY_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(LAZY_DIR)/autodiff.rkt
+
+LAZY_EXT_OPS_SOURCES=\
+  $(LAZY_EXT_OPS_DIR)/A-scalar-ops.rkt\
+  $(LAZY_EXT_OPS_DIR)/B-comparators.rkt\
+  $(LAZY_EXT_OPS_DIR)/C-star-2-1.rkt\
+  $(LAZY_EXT_OPS_DIR)/D-sum.rkt\
+  $(LAZY_EXT_OPS_DIR)/E-argmax.rkt\
+  $(LAZY_EXT_OPS_DIR)/F-max.rkt\
+  $(LAZY_EXT_OPS_DIR)/G-correlate.rkt\
+  $(LAZY_DIR)/ext-ops.rkt
+
+LAZY_LOADERS=\
+  $(LAZY_DIR)/no-duals-no-overrides.rkt\
+  $(LAZY_DIR)/no-duals.rkt\
+  $(LAZY_DIR)/no-overrides.rkt\
+  $(LAZY_DIR)/tensors.rkt\
+  $(LAZY_DIR)/autodiff.rkt\
+  $(LAZY_DIR)/ext-ops.rkt
+
+LAZY_SOURCES=$(LAZY_TENSORS_SOURCES)\
+	$(LAZY_AUTODIFF_SOURCES)\
+	$(LAZY_EXT_OPS_SOURCES)\
+	$(LAZY_LOADERS)
 
 # learner
 LEARNER_TENSORS_DIR=$(LEARNER_DIR)/tensors
@@ -102,6 +143,7 @@ FLAT_LOADERS=\
   $(FLAT_DIR)/no-overrides.rkt\
   $(FLAT_DIR)/tensors.rkt\
   $(FLAT_DIR)/autodiff.rkt\
+  $(FLAT_DIR)/ext-impl.rkt\
   $(FLAT_DIR)/ext-ops.rkt
 
 FLAT_SOURCES=$(FLAT_TENSORS_SOURCES)\
@@ -182,6 +224,7 @@ MALTED_SOURCES=\
 
 # All the sources together, plus entry points
 SOURCES=$(LEARNER_SOURCES)\
+  $(LAZY_SOURCES)\
   $(FLAT_SOURCES)\
   $(NESTED_SOURCES)\
   $(TOOLS_SOURCES)\

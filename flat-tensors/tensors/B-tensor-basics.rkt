@@ -179,4 +179,4 @@
 (include "test/test-B-tensor-basics.rkt")
 
 (provide tref tlen list->tensor number?
-         tensor? tensor build-tensor trefs)
+         tensor? tensor build-tensor trefs merge-flats)

@@ -384,4 +384,6 @@
 
 (include "test/test-D-extend.rkt")
 
-(provide ext1-ρ ext1-∇ ext2-ρ ext2-∇ expects-preallocated?)
+(provide ext1-ρ ext1-∇ ext2-ρ ext2-∇ expects-preallocated?
+         merge-shapes min-shape ext2-shapes idxs
+         flat-ext1-∇ flat-ext1-ρ flat-ext2-ρ)
