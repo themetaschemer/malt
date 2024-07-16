@@ -7,24 +7,22 @@
 (struct tcomp ())
 #;
 (: lst (U (Listof tpromise) (Listof Number)))
-(struct tcomp-list->tpromise-list tcomp (lst) #:transparent)
+(struct tcomp-list->tensor tcomp (lst) #:transparent)
 #;
 (: s (Listof Natural)) ;; non-empty
 #;
 (: f (-> (Listof Natural) Number))
-(struct tcomp-build-tpromise tcomp (s f) #:transparent)
+(struct tcomp-build-tensor tcomp (s f) #:transparent)
 #;
 (: tp tpromise)
 #;
 (: i Natural)
-(struct tcomp-tp-tref tcomp (tp i) #:transparent)
+(struct tcomp-tref tcomp (tp i) #:transparent)
 #;
 (: tp tpromise)
 #;
 (: i (Listof Natural))
-(struct tcomp-tp-trefs tcomp (tp b) #:transparent)
-;;TODO: Use functional->preallocated-* to use non-mutated/functional types for
-;;      the ext base functions
+(struct tcomp-trefs tcomp (tp b) #:transparent)
 #;
 (: fᵈ (U (-> Number Number (Values Number Number))
          (-> (Vector Number) Natural (Listof Natural)
@@ -121,6 +119,31 @@
 
 #;
 (: tp-force (-> tpromise (U flat Number)))
+#;
+(define force/eval
+  (lambda (delayed-expr/env)
+    (let-values (((instructions env)
+                  (compile-delayed-expr delayed-expr/env))))
+      (run-instructions instructions env)))
+
+;; run-instructions and compile-delayed-expr
+;; Phase 1 : instructions are scheme and run-instructions is basically eval
+;;     -- determine the separation between the compiler and run-time-system.
+;;     -- 1 week
+;; Phase 2 : instructions are C and run-instructions is FFI + C.
+;;     -- write the runtime-system in C
+;;     -- 3 weeks
+;; Phase 3 : instructions are OpenCL and run-instructions is FFI+ C
+;;     -- write the runtime-system in openCL.
+;;     -- 3 weeks
+;;     -- Distribution across machines --> Ph. D. Thesis.
+;; Phase 4 : instructions are SPIR-V and run-instructions is a SPIR-V driver.
+;;     -- write the runtime-system in openCL with a SPIR-V target (?)
+;;     -- 6 weeks
+;; Phase 5 : instructions are custom, and runtime system is on FPGA.
+;;     -- build VHDL blocks for custom instructions.
+;;     -- Ph. D. Thesis.
+
 (define tp-force
   (lambda (tp (print? #f))
     (when print?
@@ -147,14 +170,14 @@
 (define tcomp-force
   (λ (tc)
     (match tc
-      [(tcomp-list->tpromise-list lst)
+      [(tcomp-list->tensor lst)
        (flat:list->tensor
         (map (λ (l) (tp-force l #f)) lst))]
-      [(tcomp-build-tpromise s f)
+      [(tcomp-build-tensor s f)
        (flat:build-tensor s f)]
-      [(tcomp-tp-tref tp i)
+      [(tcomp-tref tp i)
        (flat:tref (tp-force tp) i)]
-      [(tcomp-tp-trefs tp b)
+      [(tcomp-trefs tp b)
        (flat:trefs (tp-force tp) b)]
       [(tcomp-ext2-∇ fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
        (let* ([b (if (zero? i) out0 out1)]
@@ -178,7 +201,7 @@
                 (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
          (tp-scalarize (flat-ext1-∇ flat-f m shape-fn t z))))]
       [(tcomp-ext2-ρ-scalar f tp-t tp-u)
-       (f (tp-force tp-t) (tp-force tp-t))]
+       (f (tp-force tp-t) (tp-force tp-u))]
       [(tcomp-ext2-ρ-prealloc tp-t tp-u f m n shape-fn)
        (tp-scalarize
           (flat-ext2-ρ f m n shape-fn
@@ -230,7 +253,7 @@
   (lambda (tp i)
     (cond
       [(bounded-idx*? tp (list i))
-       (tpromise (tcomp-tp-tref tp i)
+       (tpromise (tcomp-tref tp i)
                  (cdr (tpromise-shape tp)))]
       [else (error 'exn:tp-tref
                    (string-append
@@ -255,14 +278,14 @@
       [(null? lst)
        (error 'list->ltensor "No elements found")]
       [else
-       (tpromise (tcomp-list->tpromise-list lst)
+       (tpromise (tcomp-list->tensor lst)
                  `(,(length lst)
                    . ,(tp-shape
                        (car lst))))])))
 
 (define build-tpromise
   (λ (s f)
-    (tpromise (tcomp-build-tpromise s f) s)))
+    (tpromise (tcomp-build-tensor s f) s)))
 
 (define tp-trefs
   (λ (tp b)
@@ -274,7 +297,7 @@
        (error 'tp-trefs
               "An index was out of bounds")]
       [else
-       (tpromise (tcomp-tp-trefs tp b)
+       (tpromise (tcomp-trefs tp b)
                  `(,(length b)
                    . ,(cdr (tpromise-shape tp))))])))
 
@@ -464,7 +487,6 @@
            (set-box! out1
                      (tp-scalarize (flat s1 g1 0)))))))))
 
-;; TODO: Create a lazy-apply-2 that does this more generally
 (define tp-d-ext2^
   (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
     (let* ((out0 (box 'uncalculated))
