@@ -7,13 +7,14 @@
 (require "ext-ops/E-argmax.rkt")
 (require "ext-ops/F-max.rkt")
 (require "ext-ops/G-correlate.rkt")
+(require "ext-ops/I-flatten.rkt")
 
 (provide d+ d- d* d/
          d-expt d-exp d-log d-abs
          d-rectify d-sqrt d-sqr
 
          +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
-         exp-0 log-0 abs-0 rectify-0
+         exp-0 log-0 sqrt-0 abs-0 rectify-0
 
          +-ρ --ρ *-ρ /-ρ
          expt-ρ exp-ρ log-ρ abs-ρ
@@ -31,3 +32,5 @@
 (provide max-1 d-max max-ρ)
 
 (provide correlate-ρ d-correlate)
+
+(provide flatten-2 d-flatten flatten-ρ)

@@ -4,16 +4,18 @@
 
 ;; tensor computations
 (struct tcomp ())
-;; TODO: figure out if removing tcom-tensor is a good idea
-(struct tcomp-tensor tcomp (t-shape t-flat) #:transparent)
 (struct tcomp-list->tpromise-list tcomp (lst) #:transparent)
 (struct tcomp-tp-map tcomp (f tp) #:transparent)
 (struct tcomp-build-tpromise tcomp (s f) #:transparent)
 (struct tcomp-tp-trefs tcomp (forced b) #:transparent)
 (struct tcomp-ext2-∇ tcomp (b forcer) #:transparent)
-(struct tcomp-ext1-∇ tcomp (tp zp flat-f) #:transparent)
-(struct tcomp-ext2-ρ tcomp (tp-t tp-u flat-f) #:transparent)
-(struct tcomp-ext1-ρ tcomp (tp flat-f) #:transparent)
+(struct tcomp-ext1-∇-prealloc tcomp (tp zp f m shape-fn) #:transparent)
+(struct tcomp-ext1-∇ tcomp (tp zp f m shape-fn) #:transparent)
+(struct tcomp-ext2-ρ-prealloc tcomp (tp-t tp-u f m n shape-fn) #:transparent)
+(struct tcomp-ext2-ρ tcomp (tp-t tp-u f m n shape-fn) #:transparent)
+(struct tcomp-ext1-ρ-scalar tcomp (f tp) #:transparent)
+(struct tcomp-ext1-ρ-prealloc tcomp (f m shape-fn tp) #:transparent)
+(struct tcomp-ext1-ρ tcomp (f m shape-fn tp) #:transparent)
 (struct tcomp-reshape tcomp (s tp) #:transparent)
 
 (struct tpromise ((tensor #:mutable) shape)
@@ -96,8 +98,6 @@
 (define tcomp-force
   (λ (tc)
     (match tc
-      #;[(tcomp-tensor t-shape t-flat)
-         (flat t-shape t-flat 0)]
       [(tcomp-list->tpromise-list lst)
        (flat:list->tensor
         (map (λ (l) (tp-force l #f)) lst))]
@@ -119,18 +119,45 @@
             (forcer)
             (unbox b))
            (else v)))]
-      [(tcomp-ext1-∇ tp zp flat-f)
-       (let ([t (tp-force tp #f)]
-             [z (tp-force zp #f)])
-         (scalarize (flat-f (ensure-flat t) (ensure-flat z))))]
-      [(tcomp-ext2-ρ tp-t tp-u flat-f)
-       (let ([t (tp-force tp-t #f)]
-             [u (tp-force tp-u #f)])
-         (scalarize (flat-f (ensure-flat t) (ensure-flat u))))]
-      [(tcomp-ext1-ρ tp flat-f)
-       (let ([t (tp-force tp #f)])
-         (let ([res (scalarize (flat-f t))])
-           res))]
+      [(tcomp-ext1-∇-prealloc tp zp f m shape-fn)
+       (scalarize
+        (flat-ext1-∇ f m shape-fn
+                     (ensure-flat (tp-force tp))
+                     (ensure-flat (tp-force zp))))]
+      [(tcomp-ext1-∇ tp zp f m shape-fn)
+       (let ([t (ensure-flat (tp-force tp #f))]
+             [z (ensure-flat (tp-force zp #f))])
+         (let* ((in-shape (flat-shape t))
+                (base-shape (min-shape m in-shape))
+                (out-shape (shape-fn base-shape))
+                (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
+         (scalarize (flat-ext1-∇ flat-f m shape-fn t z))))]
+      [(tcomp-ext2-ρ-prealloc tp-t tp-u f m n shape-fn)
+       (scalarize
+          (flat-ext2-ρ f m n shape-fn
+                       (ensure-flat (tp-force tp-t))
+                       (ensure-flat (tp-force tp-u))))]
+      [(tcomp-ext2-ρ tp-t tp-u f m n shape-fn)
+       (let ([t (ensure-flat (tp-force tp-t #f))]
+             [u (ensure-flat (tp-force tp-u #f))])
+         (let* ((t-shape (min-shape m (flat-shape t)))
+                (u-shape (min-shape n (flat-shape u)))
+                (out-shape (shape-fn t-shape u-shape))
+                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape)))
+           (scalarize
+            (flat-ext2-ρ flat-f m n shape-fn t u))))]
+      [(tcomp-ext1-ρ-scalar f tp)
+       (f (tp-force tp))]
+      [(tcomp-ext1-ρ-prealloc f m shape-fn tp)
+       (scalarize (flat-ext1-ρ f m shape-fn (ensure-flat (tp-force tp))))]
+      [(tcomp-ext1-ρ f m shape-fn tp)
+       (let ([t (ensure-flat (tp-force tp #f))])
+         (let* ((in-shape (flat-shape t))
+                (base-shape (min-shape m in-shape))
+                (out-shape (shape-fn base-shape))
+                (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
+           (scalarize
+            (flat-ext1-ρ flat-f m shape-fn t))))]
       [(tcomp-reshape s tp)
        (let ([t (tp-force tp #f)])
          (flat s (flat-store t) (flat-offset t)))])))
@@ -217,55 +244,65 @@
                      . ,(cdr (flat-shape forced)))))])))
 
 (define tp-ext1-ρ
-  (λ (f
-      m
-      [shape-fn scalar-shape]
-      [context 'lazy-ext1])
-    (let ((flat-f
-           (flat-ext1-ρ (flat-function-maker1 f m)
-                 m shape-fn context)))
-      (λ (tp)
-        (cond
-          [(scalar? tp) (f tp)]
-          [(and (tpromise? tp)
-                (null? (tpromise-shape tp)))
-           (f (tp-force tp))]
-          [else
-           (tpromise
-            (tcomp-ext1-ρ tp flat-f)
-            (merge-shapes
-             (tpromise-shape tp)
-             m
-             (shape-fn
-              (min-shape m (tpromise-shape tp)))))])))))
+  (λ (f m [shape-fn scalar-shape])
+    (λ (tp)
+      (cond
+        [(scalar? tp) (f tp)]
+        [(and (tpromise? tp)
+              (null? (tpromise-shape tp)))
+         (tpromise
+          (tcomp-ext1-ρ-scalar f tp)
+          '())]
+        [(flat:expects-preallocated? f)
+         (tpromise
+          (tcomp-ext1-ρ-prealloc f m shape-fn tp)
+          (merge-shapes
+           (tp-shape tp)
+           m
+           (shape-fn
+            (min-shape m (tp-shape tp)))))]
+        [else
+         (tpromise
+          (tcomp-ext1-ρ f m shape-fn tp)
+          (merge-shapes
+           (tp-shape tp)
+           m
+           (shape-fn
+            (min-shape m (tp-shape tp)))))]))))
 
 (define tp-ext2-ρ
-  (λ (f
-      m
-      n
-      [shape-fn scalar-shape]
-      [context 'raw-ext2])
-    (let ((flat-f
-           (flat-ext2-ρ (flat-function-maker2 f m n)
-                 m n shape-fn #;context)))
-      (λ (tp-t tp-u)
-        (cond
-          ((and (number? tp-t) (number? tp-u))
-           (f tp-t tp-u))
-          [(and (tpromise? tp-t) (tpromise? tp-u)
-                (null? (tpromise-shape tp-t))
-                (null? (tpromise-shape tp-u)))
-           (f (tp-force tp-t) (tp-force tp-u))]
-          [else
-           (let* ([s0 (tp-shape tp-t)]
-                  [s1 (tp-shape tp-u)]
-                  [sf0 (min-shape m s0)]
-                  [sf1 (min-shape n s1)]
-                  [sf-out (shape-fn sf0 sf1)])
-             (tpromise
-              (tcomp-ext2-ρ tp-t tp-u flat-f)
-              (ext2-shapes s0 s1 m n sf-out
-                           (λ (s-out . _) s-out))))])))))
+  (λ (f m n [shape-fn scalar-shape])
+    (λ (tp-t tp-u)
+      (cond
+        ((and (number? tp-t) (number? tp-u))
+         (f tp-t tp-u))
+        [(and (tpromise? tp-t) (tpromise? tp-u)
+              (null? (tpromise-shape tp-t))
+              (null? (tpromise-shape tp-u)))
+         ;; TODO: move this to a tcomp
+         (f (tp-force tp-t) (tp-force tp-u))]
+        [(flat:expects-preallocated? f)
+         (let* ([s0 (tp-shape tp-t)]
+                [s1 (tp-shape tp-u)]
+                [sf0 (min-shape m s0)]
+                [sf1 (min-shape n s1)]
+                [sf-out (shape-fn sf0 sf1)])
+           (tpromise
+            (tcomp-ext2-ρ-prealloc tp-t tp-u
+                                   f m n shape-fn)
+            (ext2-shapes s0 s1 m n sf-out
+                         (λ (s-out . _) s-out))))]
+        [else
+         (let* ([s0 (tp-shape tp-t)]
+                [s1 (tp-shape tp-u)]
+                [sf0 (min-shape m s0)]
+                [sf1 (min-shape n s1)]
+                [sf-out (shape-fn sf0 sf1)])
+           (tpromise
+            (tcomp-ext2-ρ (ensure-tpromise tp-t) (ensure-tpromise tp-u)
+                          f m n shape-fn)
+            (ext2-shapes s0 s1 m n sf-out
+                         (λ (s-out . _) s-out))))]))))
 
 (define scalarize
   (λ (t)
@@ -310,85 +347,80 @@
       (else f))))
 
 (define tp-ext1-∇
-  (λ (f
-      m
-      [shape-fn scalar-shape]
-      [context 'lazy-d-ext1])
-    (let ((flat-f
-           (flat-ext1-∇ (flat-gradient-maker1 f m)
-                   m shape-fn)))
-      (λ (tp zp)
-        (cond
-          ((number? tp) (f tp zp))
-          (else
-           (tpromise
-            (tcomp-ext1-∇ tp zp flat-f)
-            (tpromise-shape tp))))))))
+  (λ (f m [shape-fn scalar-shape])
+    (λ (tp zp)
+      (cond
+        ((number? tp) (f tp zp))
+        ((flat:expects-preallocated? f)
+         (tpromise
+          (tcomp-ext1-∇-prealloc tp zp f m shape-fn)
+          (tp-shape tp)))
+        (else
+         (tpromise
+          (tcomp-ext1-∇ tp zp f m shape-fn)
+          (tp-shape tp)))))))
 
 (define tp-d-ext2^
-  (λ (fᵈ r0 r1 shape-fn [context 'lazy-flat-d-ext2])
-    (λ (tp-t0 tp-t1 tp-z)
-      (let* ((s0 (tpromise-shape tp-t0))
-             (sf0 (min-shape r0 s0))
-             (stride0 (flat:size-of sf0))
+  (λ (fᵈ r0 r1 shape-fn tp-t0 tp-t1 tp-z)
+    (let* ((s0 (tp-shape tp-t0))
+           (sf0 (min-shape r0 s0))
+           (stride0 (flat:size-of sf0))
 
-             (s1 (tpromise-shape tp-t1))
-             (sf1 (min-shape r1 s1))
-             (stride1 (flat:size-of sf1))
+           (s1 (tp-shape tp-t1))
+           (sf1 (min-shape r1 s1))
+           (stride1 (flat:size-of sf1))
 
-             (sf-z (shape-fn sf0 sf1))
-             (stride-z (flat:size-of sf-z))
+           (sf-z (shape-fn sf0 sf1))
+           (stride-z (flat:size-of sf-z))
 
-             (out0 (box 'uncalculated))
-             (out1 (box 'uncalculated))
-             (forcer
-              (λ ()
-                (let* ((f0 (ensure-flat (tp-force tp-t0)))
-                       (f1 (ensure-flat (tp-force tp-t1)))
-                       (fz (ensure-flat (tp-force tp-z)))
+           (out0 (box 'uncalculated))
+           (out1 (box 'uncalculated))
+           (forcer
+            (λ ()
+              (let* ((f0 (ensure-flat (tp-force tp-t0)))
+                     (f1 (ensure-flat (tp-force tp-t1)))
+                     (fz (ensure-flat (tp-force tp-z)))
 
-                       (v0 (flat-store f0))
-                       (v1 (flat-store f1))
-                       (vz (flat-store fz))
+                     (v0 (flat-store f0))
+                     (v1 (flat-store f1))
+                     (vz (flat-store fz))
 
-                       (off0 (flat-offset f0))
-                       (off1 (flat-offset f1))
-                       (offz (flat-offset fz)))
-                  (ext2-shapes
-                   s0 s1 r0 r1 sf-z
-                   (λ (sz size-z q0 q1 strides)
-                     (let ((g0 (new-vec (flat:size-of
-                                         s0)
-                                        0.0
-                                        context))
-                           (g1 (new-vec (flat:size-of
-                                         s1)
-                                        0.0
-                                        context)))
-                       (for ([iz (in-range
-                                  0
-                                  size-z
-                                  stride-z)])
-                         (let-values (((i0 i1)
-                                       (idxs
-                                        strides
-                                        iz
-                                        off0
-                                        off1)))
-                           (fᵈ g0 g1 v0 i0
-                               stride0
-                               v1 i1
-                               stride1
-                               vz
-                               (+ offz iz)
-                               stride-z)))
-                       (set-box! out0
-                                 (flat s0 g0 0))
-                       (set-box! out1
-                                 (flat s1 g1 0)))))))))
-        (values
-         (tpromise (tcomp-ext2-∇ out0 forcer) s0)
-         (tpromise (tcomp-ext2-∇ out1 forcer) s1))))))
+                     (off0 (flat-offset f0))
+                     (off1 (flat-offset f1))
+                     (offz (flat-offset fz)))
+                (ext2-shapes
+                 s0 s1 r0 r1 sf-z
+                 (λ (sz size-z q0 q1 strides)
+                   (let ((g0 (new-vec (flat:size-of
+                                       s0)
+                                      0.0))
+                         (g1 (new-vec (flat:size-of
+                                       s1)
+                                      0.0)))
+                     (for ([iz (in-range
+                                0
+                                size-z
+                                stride-z)])
+                       (let-values (((i0 i1)
+                                     (idxs
+                                      strides
+                                      iz
+                                      off0
+                                      off1)))
+                         (fᵈ g0 g1 v0 i0
+                             stride0
+                             v1 i1
+                             stride1
+                             vz
+                             (+ offz iz)
+                             stride-z)))
+                     (set-box! out0
+                               (flat s0 g0 0))
+                     (set-box! out1
+                               (flat s1 g1 0)))))))))
+      (values
+       (tpromise (tcomp-ext2-∇ out0 forcer) s0)
+       (tpromise (tcomp-ext2-∇ out1 forcer) s1)))))
 
 (define ensure-tpromise
   (λ (v)
@@ -397,24 +429,27 @@
       (else v))))
 
 (define tp-ext2-∇
-  (λ (f
-      m
-      n
-      [shape-fn scalar-shape]
-      [context 'lazy-d-ext2])
+  (λ (f m n [shape-fn scalar-shape])
     (let ((tp-f
-           (let ((f (tp-d-ext2^
-                     (flat-gradient-maker2 f m n)
-                     m n shape-fn)))
-             (λ (tp-t tp-u tp-z)
-               (let-values (((tp-dt tp-du)
-                             (f tp-t tp-u tp-z)))
-                 (values (tp-scalarize tp-dt)
-                         (tp-scalarize tp-du)))))))
+           (λ (f tp-t tp-u tp-z)
+             (let-values (((tp-dt tp-du)
+                           (tp-d-ext2^ f m n shape-fn
+                                       tp-t tp-u tp-z)))
+               (values (tp-scalarize tp-dt)
+                       (tp-scalarize tp-du))))))
       (λ (tp-t tp-u tp-z)
-        (tp-f (ensure-tpromise tp-t)
-              (ensure-tpromise tp-u)
-              (ensure-tpromise tp-z))))))
+        (cond
+          ((flat:expects-preallocated? f)
+           (tp-f f tp-t tp-u tp-z))
+          [else (let* ((t-shape (min-shape m (tp-shape tp-t)))
+                       (u-shape (min-shape n (tp-shape tp-u)))
+                       (out-shape (shape-fn t-shape u-shape))
+                       (flat-f (functional->preallocated-2-∇
+                                f t-shape u-shape out-shape)))
+                  (tp-f flat-f
+                        (ensure-tpromise tp-t)
+                        (ensure-tpromise tp-u)
+                        (ensure-tpromise tp-z)))])))))
 
 (define flat-gradient-maker2
   (λ (f m n)
@@ -471,6 +506,7 @@
           (flat:refr refr)))
 (provide tensor
          tp-force
+         tpromise?
          (rename-out
           (tp-scalarize scalarize)
           (tp-tref tref)
