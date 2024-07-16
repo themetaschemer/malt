@@ -210,12 +210,13 @@
            (sf-z (shape-fn sf0))
            (stride-z (size-of sf-z))
            (vz (flat-store z))
+           (offz (flat-offset z))
 
            (g0 (new-vec size0 0.0)))
       (for ([iz (in-range 0 size-z stride-z)]
             #;[i0 (in-range off0 (+ off0 size0) stride0)])
         (define i0 (+ off0 (* (/ iz stride-z) stride0)))
-        (fᵈ g0 v0 i0 stride0 vz iz stride-z))
+        (fᵈ g0 v0 i0 stride0 vz (+ offz iz) stride-z))
       (flat s0 g0 0))))
 
 (define flat-ext2-ρ
