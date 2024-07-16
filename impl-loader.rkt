@@ -32,11 +32,16 @@
   (λ ()
     (car (dict-ref (settings) 'tensor-implementation))))
 
+(define accelerate?
+  (λ ()
+    (car (dict-ref (settings) 'accelerate?))))
+
 ;; Default settings
 (define default-preferences
-  `((tensor-implementation learner)))
+  `((tensor-implementation learner)
+    (accelerate? #t)))
 
 (when (not (settings))
   (init-settings))
 
-(provide tensor-implementation)
+(provide tensor-implementation accelerate?)

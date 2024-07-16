@@ -1,7 +1,9 @@
 #lang racket
 
+(require "../../impl-loader.rkt")
 (require "0-vectors.ss")
 (require "1-flats.ss")
+(require "2-acc-runtime.ss")
 (require "B-tensor-basics.ss")
 (require "C-tensor-ops.ss")
 
@@ -9,35 +11,43 @@
 ;; Unary Pointwise extension
 ;;—————————————————–—————————————————–—————————————————–
 
+;; TODO: Replace accelerate? parameter with a function which determines based on
+;; the size of computation workload when to disable GPU acceleration and default
+;; to running code on the CPU .
+
 (define ext1-ρ
-  (λ (f m [shape-fn scalar-shape])
+  (λ (f f-acc m [shape-fn scalar-shape])
     (λ (t)
       (cond
         ((number? t) (f t))
         ((expects-preallocated? f)
          (scalarize
-          (flat-ext1-ρ f m shape-fn t)))
+          (flat-ext1-ρ f f-acc m shape-fn t)))
         (else
          (let* ((in-shape (flat-shape t))
                 (base-shape (min-shape m in-shape))
                 (out-shape (shape-fn base-shape))
-                (flat-f (functional->preallocated-1-ρ f base-shape out-shape)))
+                (flat-f (functional->preallocated-1-ρ f base-shape out-shape))
+                (flat-f-acc (functional->preallocated-1-ρ-acc f-acc base-shape out-shape)))
            (scalarize
-            (flat-ext1-ρ flat-f m shape-fn t))))))))
+            (flat-ext1-ρ flat-f flat-f-acc m shape-fn t))))))))
 
 (define ext1-∇
-  (λ (f m [shape-fn scalar-shape])
+  (λ (f f-acc m [shape-fn scalar-shape])
     (λ (t z)
       (cond
         ((number? t) (f t z))
         ((expects-preallocated? f)
-         (scalarize (flat-ext1-∇ f m shape-fn t (ensure-flat z))))
+         (scalarize (flat-ext1-∇ f f-acc m shape-fn t (ensure-flat z))))
         (else
          (let* ((in-shape (flat-shape t))
                 (base-shape (min-shape m in-shape))
                 (out-shape (shape-fn base-shape))
-                (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-         (scalarize (flat-ext1-∇ flat-f m shape-fn t (ensure-flat z)))))))))
+                (flat-f (functional->preallocated-1-∇ f base-shape out-shape))
+                (flat-f-acc (functional->preallocated-1-∇-acc
+                             f-acc base-shape out-shape)))
+         (scalarize (flat-ext1-∇ flat-f flat-f-acc m
+                                 shape-fn t (ensure-flat z)))))))))
 
 (define functional->preallocated-1-ρ
   (λ (f base-shape out-shape)
@@ -56,19 +66,37 @@
   (λ (v-out i-out out-shape a)
     (cond
       ((null? out-shape) (vset! v-out i-out a))
-      (else (v-copy-flat! v-out i-out a)))))
+      (else
+       (error 'ρ-functional-non-scalar-out
+              (string-append "Functional primitives can only return scalars,"
+                             " so try defining a preallocated primitive"
+                             " instead. Out shape found: ~a")
+              out-shape)
+       #;(v-copy-flat! v-out i-out a)))))
 
 (define set-prealloc-∇!
   (λ (v-out i-out out-shape a)
     (cond
       ((null? out-shape) (vset! v-out i-out (+ (vref v-out i-out) a)))
-      (else (v-add-flat! v-out i-out a)))))
+      (else
+       (error '∇-functional-non-scalar-out
+              (string-append "Functional primitives can only return scalars,"
+                             " so try defining a preallocated primitive"
+                             " instead. Out shape found: ~a")
+              out-shape)
+       #;(v-add-flat! v-out i-out a)))))
 
 (define arg-value
   (λ (v-shape v i)
     (cond
       ((null? v-shape) (vref v i))
-      (else (flat v-shape v i)))))
+      (else
+       (error 'ρ-functional-non-scalar-in
+              (string-append "Functional primitives can only accept scalars,"
+                             " so try defining a preallocated primitive"
+                             " instead. In shape found: ~a")
+              v-shape)
+       #;(flat v-shape v i)))))
 
 
 (define invoke-functional-∇
@@ -82,64 +110,70 @@
 ;;—————————————————–—————————————————–—————————————————–
 
 (define ext2-ρ
-  (λ (f m n [shape-fn scalar-shape])
+  (λ (f f-acc m n [shape-fn scalar-shape])
     (λ (t u)
       (cond
         ((and (number? t) (number? u)) (f t u))
         ((expects-preallocated? f)
          (scalarize
-          (flat-ext2-ρ f m n shape-fn t u)))
+          (flat-ext2-ρ f f-acc m n shape-fn t u)))
         ((number? t)
          (let* ((t-shape '())
                 (u-shape (min-shape n (flat-shape u)))
                 (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape)))
+                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape))
+                (flat-f-acc (functional->preallocated-2-ρ-acc f-acc t-shape u-shape out-shape)))
            (scalarize
-            (flat-ext2-ρ flat-f m n shape-fn (ensure-flat t) u))))
+            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn (ensure-flat t) u))))
         ((number? u)
          (let* ((t-shape (min-shape m (flat-shape t)))
                 (u-shape '())
                 (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape)))
+                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape))
+                (flat-f-acc (functional->preallocated-2-ρ-acc f-acc t-shape u-shape out-shape)))
            (scalarize
-            (flat-ext2-ρ flat-f m n shape-fn t (ensure-flat u)))))
+            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn t (ensure-flat u)))))
         (else
          (let* ((t-shape (min-shape m (flat-shape t)))
                 (u-shape (min-shape n (flat-shape u)))
                 (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape)))
+                (flat-f (functional->preallocated-2-ρ f t-shape u-shape out-shape))
+                (flat-f-acc (functional->preallocated-2-ρ-acc f-acc t-shape u-shape out-shape)))
            (scalarize
-            (flat-ext2-ρ flat-f m n shape-fn t u))))))))
+            (flat-ext2-ρ flat-f flat-f-acc m n shape-fn t u))))))))
 
 (define ext2-∇
-  (λ (f m n [shape-fn scalar-shape])
+  (λ (f f-acc m n [shape-fn scalar-shape])
     (λ (t u z)
       (let ((invoke-flat-ext2-∇
-             (λ (f m n shape-fn t u z)
-               (let-values (((da db) (flat-ext2-∇ f m n shape-fn t u z)))
+             (λ (f f-acc m n shape-fn t u z)
+               (let-values (((da db) (flat-ext2-∇ f f-acc m n shape-fn t u z)))
                  (values (scalarize da) (scalarize db))))))
       (cond
         ((and (number? t) (number? u)) (f t u z))
         ((expects-preallocated? f)
-         (invoke-flat-ext2-∇ f m n shape-fn t u z))
+         (invoke-flat-ext2-∇ f f-acc m n shape-fn t u z))
         ((number? t)
          (let* ((t-shape '())
                 (u-shape (min-shape n (flat-shape u)))
                 (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-∇ f t-shape u-shape out-shape)))
-           (invoke-flat-ext2-∇ flat-f m n shape-fn (ensure-flat t) u z)))
+                (flat-f (functional->preallocated-2-∇ f t-shape u-shape out-shape))
+                (flat-f-acc (functional->preallocated-2-∇-acc f-acc t-shape u-shape out-shape)))
+           (invoke-flat-ext2-∇ flat-f flat-f-acc m n shape-fn (ensure-flat t) u z)))
         ((number? u)
          (let* ((t-shape (min-shape m (flat-shape t)))
                 (u-shape '())
                 (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-∇ f t-shape u-shape out-shape)))
-           (invoke-flat-ext2-∇ flat-f m n shape-fn t (ensure-flat u) z)))
+                (flat-f (functional->preallocated-2-∇ f t-shape u-shape out-shape))
+                (flat-f-acc (functional->preallocated-2-∇-acc f-acc t-shape u-shape out-shape)))
+           (invoke-flat-ext2-∇ flat-f flat-f-acc m n shape-fn t (ensure-flat u) z)))
         (else
          (let* ((t-shape (min-shape m (flat-shape t)))
                 (u-shape (min-shape n (flat-shape u)))
                 (out-shape (shape-fn t-shape u-shape))
-                (flat-f (functional->preallocated-2-∇ f t-shape u-shape out-shape)))
-           (invoke-flat-ext2-∇ flat-f m n shape-fn t u z))))))))
+                (flat-f (functional->preallocated-2-∇ f t-shape u-shape out-shape))
+                (flat-f-acc (functional->preallocated-2-∇-acc f-acc t-shape u-shape out-shape)))
+           (invoke-flat-ext2-∇ flat-f flat-f-acc m n shape-fn t u z))))))))
 
 (define functional->preallocated-2-ρ
   (λ (f t-shape u-shape out-shape)
@@ -176,7 +210,7 @@
             out-f-shape)))
 
 (define flat-ext1-ρ
-  (λ (f min-rank shape-fn t0)
+  (λ (f f-acc min-rank shape-fn t0)
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
            (off0 (flat-offset t0))
@@ -189,14 +223,18 @@
            (s-out (merge-shapes s0 min-rank sf-out))
            (size-out (size-of s-out))
            (v-out (new-vec size-out 0.0)))
-      (for ([i-out (in-range 0 size-out stride-out)]
-            #;[i0 (in-range off0 (+ off0 size0) stride0)])
-        (define i0 (+ off0 (* (/ i-out stride-out) stride0)))
-        (f v0 i0 stride0 v-out i-out stride-out))
+      (cond
+        ((accelerate?) (run-prim1-ρ! f-acc
+                                     v0 off0 size0 stride0
+                                     v-out size-out stride-out))
+        (else
+         (for ([i-out (in-range 0 size-out stride-out)])
+           (let ((i0 (+ off0 (* (/ i-out stride-out) stride0))))
+             (f v0 i0 stride0 v-out i-out stride-out)))))
       (flat s-out v-out 0))))
 
 (define flat-ext1-∇
-  (λ (fᵈ min-rank shape-fn t0 z)
+  (λ (fᵈ fᵈ-acc min-rank shape-fn t0 z)
     ;; z has the same shape as the output
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
@@ -210,25 +248,32 @@
            (sf-z (shape-fn sf0))
            (stride-z (size-of sf-z))
            (vz (flat-store z))
+           (offz (flat-offset z))
 
            (g0 (new-vec size0 0.0)))
-      (for ([iz (in-range 0 size-z stride-z)]
-            #;[i0 (in-range off0 (+ off0 size0) stride0)])
-        (define i0 (+ off0 (* (/ iz stride-z) stride0)))
-        (fᵈ g0 v0 i0 stride0 vz iz stride-z))
+      (cond
+        ((accelerate?) (run-prim1-∇! fᵈ-acc g0
+                                     v0 off0 size0 stride0
+                                     vz offz size-z stride-z))
+        (else
+         (for ([iz (in-range 0 size-z stride-z)])
+           (let ((i0 (+ off0 (* (/ iz stride-z) stride0))))
+             (fᵈ g0 v0 i0 stride0 vz (+ offz iz) stride-z)))))
       (flat s0 g0 0))))
 
 (define flat-ext2-ρ
-  (λ (f r0 r1 shape-fn t0 t1)
+  (λ (f f-acc r0 r1 shape-fn t0 t1)
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
            (off0 (flat-offset t0))
            (sf0 (min-shape r0 s0))
+           (size0 (size-of s0))
 
            (s1 (flat-shape t1))
            (v1 (flat-store t1))
            (off1 (flat-offset t1))
            (sf1 (min-shape r1 s1))
+           (size1 (size-of s1))
 
            (sf-out (shape-fn sf0 sf1))
            (stride0 (size-of sf0))
@@ -237,24 +282,32 @@
       (ext2-shapes s0 s1 r0 r1 sf-out
         (λ (s-out size-out q0 q1 strides)
           (let ((out-v (new-vec size-out 0.0)))
-            (for ([out-i (in-range 0 size-out stride-out)])
-              (let-values (((i0 i1)
-                            (idxs strides out-i off0 off1)))
-                (f v0 i0 stride0 v1 i1 stride1 out-v (+ 0 out-i) stride-out)))
+            (cond
+              ((accelerate?) (run-prim2-ρ! f-acc strides
+                                           v0 off0 size0 stride0
+                                           v1 off1 size1 stride1
+                                           out-v size-out stride-out))
+              (else
+               (for ([out-i (in-range 0 size-out stride-out)])
+                 (let-values (((i0 i1)
+                               (idxs strides out-i off0 off1)))
+                   (f v0 i0 stride0 v1 i1 stride1 out-v (+ 0 out-i) stride-out)))))
             (flat s-out out-v 0)))))))
 
 (define flat-ext2-∇
-  (λ (fᵈ r0 r1 shape-fn t0 t1 z)
+  (λ (fᵈ fᵈ-acc r0 r1 shape-fn t0 t1 z)
     (let* ((s0 (flat-shape t0))
            (v0 (flat-store t0))
            (off0 (flat-offset t0))
            (sf0 (min-shape r0 s0))
+           (size0 (size-of s0))
            (stride0 (size-of sf0))
 
            (s1 (flat-shape t1))
            (v1 (flat-store t1))
            (off1 (flat-offset t1))
            (sf1 (min-shape r1 s1))
+           (size1 (size-of s1))
            (stride1 (size-of sf1))
 
            (sf-z (shape-fn sf0 sf1))
@@ -265,10 +318,16 @@
         (λ (sz size-z q0 q1 strides)
           (let ((g0 (new-vec (size-of s0) 0.0))
                 (g1 (new-vec (size-of s1) 0.0)))
-            (for ([iz (in-range 0 size-z stride-z)])
-              (let-values (((i0 i1)
-                            (idxs strides iz off0 off1)))
-                (fᵈ g0 g1 v0 i0 stride0 v1 i1 stride1 vz (+ offz iz) stride-z)))
+            (cond
+              ((accelerate?) (run-prim2-∇! fᵈ-acc strides g0 g1
+                                           v0 off0 size0 stride0
+                                           v1 off1 size1 stride1
+                                           vz offz size-z stride-z))
+              (else
+               (for ([iz (in-range 0 size-z stride-z)])
+                 (let-values (((i0 i1)
+                               (idxs strides iz off0 off1)))
+                   (fᵈ g0 g1 v0 i0 stride0 v1 i1 stride1 vz (+ offz iz) stride-z)))))
             (values (flat s0 g0 0)
                     (flat s1 g1 0))))))))
 
