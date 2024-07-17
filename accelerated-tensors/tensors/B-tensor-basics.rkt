@@ -71,7 +71,7 @@
     (cond
       ((null? lst) (error 'list->flat-tensor "No elements found"))
       ((number? (car lst))
-       (flat (list (length lst)) (list->vec lst) 0))
+       (flat (list (length lst)) (list->vec (map exact->inexact lst)) 0))
       (else
        (flat-tensor-from-list lst)))))
 
