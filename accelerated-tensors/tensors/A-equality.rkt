@@ -59,7 +59,12 @@
                           (vref expected-store i-expected)) check)
                         (else (return #f)))))))))
 
-(define-binary-check (check-tensor-equal? tensor-equal? actual expected))
+(define-check (check-tensor-equal? actual expected)
+  (unless (tensor-equal? actual expected)
+    (fail-check (format "Tensors failed to match.~%actual:~%~s~%expected:~s~%~%actual store:~%~s~%expected store:~s~%"
+                        actual expected
+                        (with-output-to-string (λ () (print-vec (flat-store actual))))
+                        (with-output-to-string (λ () (print-vec (flat-store expected))))))))
 
 (include "test/test-A-equality.rkt")
 

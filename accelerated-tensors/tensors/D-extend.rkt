@@ -20,7 +20,7 @@
     (λ (t)
       (cond
         ((number? t) (f t))
-        ((expects-preallocated? f)
+        ((expects-preallocated? f-acc)
          (scalarize
           (flat-ext1-ρ f f-acc m shape-fn t)))
         (else
@@ -37,7 +37,7 @@
     (λ (t z)
       (cond
         ((number? t) (f t z))
-        ((expects-preallocated? f)
+        ((expects-preallocated? f-acc)
          (scalarize (flat-ext1-∇ f f-acc m shape-fn t (ensure-flat z))))
         (else
          (let* ((in-shape (flat-shape t))
@@ -67,24 +67,14 @@
     (cond
       ((null? out-shape) (vset! v-out i-out a))
       (else
-       (error 'ρ-functional-non-scalar-out
-              (string-append "Functional primitives can only return scalars,"
-                             " so try defining a preallocated primitive"
-                             " instead. Out shape found: ~a")
-              out-shape)
-       #;(v-copy-flat! v-out i-out a)))))
+       (v-copy-flat! v-out i-out a)))))
 
 (define set-prealloc-∇!
   (λ (v-out i-out out-shape a)
     (cond
       ((null? out-shape) (vset! v-out i-out (+ (vref v-out i-out) a)))
       (else
-       (error '∇-functional-non-scalar-out
-              (string-append "Functional primitives can only return scalars,"
-                             " so try defining a preallocated primitive"
-                             " instead. Out shape found: ~a")
-              out-shape)
-       #;(v-add-flat! v-out i-out a)))))
+       (v-add-flat! v-out i-out a)))))
 
 (define arg-value
   (λ (v-shape v i)
@@ -114,7 +104,7 @@
     (λ (t u)
       (cond
         ((and (number? t) (number? u)) (f t u))
-        ((expects-preallocated? f)
+        ((expects-preallocated? f-acc)
          (scalarize
           (flat-ext2-ρ f f-acc m n shape-fn t u)))
         ((number? t)
@@ -151,7 +141,7 @@
                  (values (scalarize da) (scalarize db))))))
       (cond
         ((and (number? t) (number? u)) (f t u z))
-        ((expects-preallocated? f)
+        ((expects-preallocated? f-acc)
          (invoke-flat-ext2-∇ f f-acc m n shape-fn t u z))
         ((number? t)
          (let* ((t-shape '())
@@ -320,20 +310,13 @@
                 (g1 (new-vec (size-of s1) 0.0)))
             (cond
               ((accelerate?)
-               (cond
-                 (parallel-desc? (run-prim2-∇-atomic! (ext2-∇-kernel-atomic fᵈ-acc strides)
-                                                      g0 g1
-                                                      v0 off0 size0 stride0
-                                                      v1 off1 size1 stride1
-                                                      vz offz size-z stride-z))
-                 (else
-                  (let*-values (((kernel-code0 kernel-code1)
-                                 (ext2-∇-kernel-split fᵈ-acc strides s0 s1 r0 r1 sz (length sf-z))))
-                    (run-prim2-∇-split! kernel-code0 kernel-code1
-                                        g0 g1
-                                        v0 off0 size0 stride0
-                                        v1 off1 size1 stride1
-                                        vz offz size-z stride-z)))))
+               (let ((kernel-code (ext2-∇-kernel fᵈ-acc strides s0 s1 r0 r1 sz
+                                                 (length sf-z))))
+                 (run-prim2-∇! kernel-code
+                               g0 g1
+                               v0 off0 size0 stride0
+                               v1 off1 size1 stride1
+                               vz offz size-z stride-z)))
               (else
                (for ([iz (in-range 0 size-z stride-z)])
                  (let-values (((i0 i1) (idxs strides iz off0 off1)))
@@ -462,5 +445,7 @@
 (provide ext1-ρ ext1-∇ ext2-ρ ext2-∇ expects-preallocated?
          functional->preallocated-1-ρ functional->preallocated-1-∇
          functional->preallocated-2-ρ functional->preallocated-2-∇
+         functional->preallocated-1-ρ-acc functional->preallocated-1-∇-acc
+         functional->preallocated-2-ρ-acc functional->preallocated-2-∇-acc
          merge-shapes min-shape ext2-shapes idxs
          flat-ext1-∇ flat-ext1-ρ flat-ext2-ρ scalarize ensure-flat)

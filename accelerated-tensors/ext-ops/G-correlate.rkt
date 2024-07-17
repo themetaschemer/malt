@@ -1,5 +1,6 @@
 #lang racket
 
+(require string-interpolation)
 (require "../tensors/0-vectors.rkt")
 (require (only-in "../tensors.rkt" ext2-ρ len))
 (require "../autodiff.rkt")
@@ -29,6 +30,28 @@
                        (+ sum (* a b))))
                     (else sum))))))))))
 
+(define correlate-3-1-ρ-acc
+  (λ (nd md qd)
+      (λ (v0 i0 _
+          v1 i1 d
+          v-out i-out b)
+        #<<EOF
+    int i1_min = @{i1} - @{i1} % @{nd};
+    int i1_max = i1_min + @{nd};
+    for(int i=0; i<@{b}; i++) {
+        float sum = 0.0;
+        for(int j=0; j<@{md}; j++) {
+            int ai = @{i0} + i * @{md} + j;
+            int bi = @{i1} + j - @{qd};
+            if(bi >= i1_min && bi < i1_max) {
+                sum += @{v0}[ai] * @{v1}[bi];
+            }
+        }
+        @{v-out}[@{i-out}+i] = sum;
+    }
+EOF
+        )))
+
 (define correlate-3-1-∇
   (λ (nd md qd)
     (λ (g0 g1
@@ -50,6 +73,44 @@
                     (vset! g1 bi
                       (+ (vref g1 bi) (* z a)))))))))))))
 
+(define correlate-3-1-∇-acc
+  (λ (nd md qd)
+    (λ (g
+        v0 i0 bmd
+        v1 i1 d
+        vz iz b)
+      (values
+      #<<EOF
+    int i1_min = @{i1} - @{i1} % @{nd};
+    int i1_max = i1_min + @{nd};
+    for(int i=0; i<@{b}; i++) {
+        float z = @{vz}[@{iz}+1];
+        for(int j=0; j<@{md}; j++) {
+            int ai = @{i0} + i * @{md} + j;
+            int bi = @{i1} + j - @{qd};
+            if(bi >= i1_min && bi < i1_max) {
+                @{g}[ai] += z * @{v1}[bi];
+            }
+        }
+    }
+EOF
+
+      #<<EOF
+    int i1_min = @{i1} - @{i1} % @{nd};
+    int i1_max = i1_min + @{nd};
+    for(int i=0; i<@{b}; i++) {
+        float z = @{vz}[@{iz}+1];
+        for(int j=0; j<@{md}; j++) {
+            int ai = @{i0} + i * @{md} + j;
+            int bi = @{i1} + j - @{qd};
+            if(bi >= i1_min && bi < i1_max) {
+                @{g}[bi] += z * @{v0}[ai];
+            }
+        }
+    }
+EOF
+       ))))
+
 (define correlate-shape
   (λ (bmd nd)
     (list (car bmd))))
@@ -58,7 +119,9 @@
   (λ (nd md qd)
     (prim2
      (correlate-3-1-ρ nd md qd)
+     (correlate-3-1-ρ-acc nd md qd)
      (correlate-3-1-∇ nd md qd)
+     (correlate-3-1-∇-acc nd md qd)
      correlate-shape)))
 
 (define d-correlate
@@ -83,7 +146,7 @@
            (q (/ (- m 1) 2)) ;; This is the padding.
            (qd (* q d))
            (md (* m d)))
-      ((ext2-ρ (correlate-3-1-ρ nd md qd) 3 1 correlate-shape)
+      ((ext2-ρ (correlate-3-1-ρ nd md qd) (correlate-3-1-ρ-acc nd md qd) 3 1 correlate-shape)
        bank signal))))
 
 (define last

@@ -7,8 +7,14 @@
 (define ρ-function
   (λ (f) (f ρ-function)))
 
+(define ρ-acc-function
+  (λ (f) (f ρ-acc-function)))
+
 (define ∇-function
   (λ (f) (f ∇-function)))
+
+(define ∇-acc-function
+  (λ (f) (f ∇-acc-function)))
 
 (define shape-fn
   (λ (f) (f shape-fn)))
@@ -35,13 +41,15 @@
 ;;
 
 (define prim1
-  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
+  (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
     (let ((ρ-callable (ensure-ρ-callable-1 ρ-fn shape))
           (∇-callable (ensure-∇-callable-1 ∇-fn shape)))
       (λ (daf)
         (cond
           ((eq? daf ρ-function) ρ-fn)
+          ((eq? daf ρ-acc-function) ρ-acc-fn)
           ((eq? daf ∇-function) ∇-fn)
+          ((eq? daf ∇-acc-function) ∇-acc-fn)
           ((eq? daf shape-fn) shape)
           (else (prim1-dual ρ-callable ∇-callable daf)))))))
 
@@ -54,14 +62,16 @@
             ((κ da) da ga σ)))))))
 
 (define prim2
-  (λ (ρ-fn ∇-fn [shape (λ (l . r) l)])
+  (λ (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn [shape (λ (l . r) l)])
     (let ((ρ-callable (ensure-ρ-callable-2 ρ-fn shape))
           (∇-callable (ensure-∇-callable-2 ∇-fn shape)))
       (λ ds
         (let ((daf (ref ds 0)))
           (cond
             ((eq? daf ρ-function) ρ-fn)
+            ((eq? daf ρ-acc-function) ρ-acc-fn)
             ((eq? daf ∇-function) ∇-fn)
+            ((eq? daf ∇-acc-function) ∇-acc-fn)
             ((eq? daf shape-fn) shape)
             (else (prim2-dual ρ-callable ∇-callable daf (ref ds 1)))))))))
 
@@ -207,15 +217,19 @@
 (define ext1
   (λ (f n)
     (prim1
-     (ext1-ρ (ρ-function f) n (shape-fn f))
-     (ext1-∇ (∇-function f) n (shape-fn f))
+     (ext1-ρ (ρ-function f) (ρ-acc-function f) n (shape-fn f))
+     (ρ-acc-function f)
+     (ext1-∇ (∇-function f) (∇-acc-function f) n (shape-fn f))
+     (∇-acc-function f)
      (shape-fn f))))
 
 (define ext2
   (λ (f m n)
     (prim2
-     (ext2-ρ (ρ-function f) m n (shape-fn f))
-     (ext2-∇ (∇-function f) m n (shape-fn f))
+     (ext2-ρ (ρ-function f) (ρ-acc-function f) m n (shape-fn f))
+     (ρ-acc-function f)
+     (ext2-∇ (∇-function f) (∇-acc-function f) m n (shape-fn f))
+     (∇-acc-function f)
      (shape-fn f))))
 
 (provide prim1 prim2 ext1 ext2)
