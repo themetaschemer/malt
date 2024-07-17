@@ -35,9 +35,12 @@
   (λ (x)
     (*-ρ x x)))
 
+(define zeroes-ρ
+  (ext1 (λ (_) 0.0) 0))
+
 (provide +-ρ --ρ *-ρ /-ρ
          expt-ρ exp-ρ log-ρ abs-ρ
-         rectify-ρ sqrt-ρ sqr-ρ)
+         rectify-ρ sqrt-ρ sqr-ρ zeroes-ρ)
 
 (define *-2-1-ρ
   (ext2 *-ρ 2 1))
