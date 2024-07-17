@@ -2,10 +2,14 @@
 
 (require "../tensors.rkt")
 (require "A-autodiff.ss")
+(require "E-print.ss")
 
 (require rackunit)
 
-(define-binary-check (check-dual-equal? equal-wt? actual expected))
+(define-check (check-dual-equal? actual expected)
+  (unless (equal-wt? actual expected)
+    (fail-check (format "Duals failed to match.~%actual:~%~s~%expected:~s~%"
+                        (make-printable actual) (make-printable expected)))))
 (define-check (ρ-∇-checker fn args ans grads)
   (let* ((y (apply fn args))
          (g (apply (∇¹ fn) args)))
@@ -14,10 +18,10 @@
             (equal-wt? grads (ρ g))) (void))
       ((equal-wt? ans (ρ y))
        (fail-check (format "Gradients failed to match.~%actual:~%~s~%expected:~s~%"
-                           (ρ g) grads)))
+                           (make-printable (ρ g)) (make-printable grads))))
       (else
        (fail-check (format "Answers failed to match.~%actual:~%~s~%expected:~s~%"
-                           (ρ y) ans))))))
+                           (make-printable (ρ y)) (make-printable ans)))))))
 
 (define-syntax check-ρ-∇
   (syntax-rules ()

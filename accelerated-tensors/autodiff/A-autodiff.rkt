@@ -1,6 +1,7 @@
 #lang racket
 
 (require "../tensors.rkt")
+(require string-interpolation)
 
 ;;----------------------------
 ;; Real part of a dual is always a tensor (of any rank)
@@ -52,7 +53,7 @@
       (hash-set σ d (+-ρ z g)))))
 
 (define +-ρ
-  (ext2-ρ + 0 0))
+  (ext2-ρ + (λ (a b) "@{a} + @{b}") 0 0))
 
 ;;----------------------------
 ;; Reverse-mode AD
@@ -111,7 +112,7 @@
       ((dual? v) (trace-print (ρ v) port))
       (else (fprintf port "~a~%" v)))))
 
-(define (one-like s) ((ext1-ρ (λ (x) 1.0) 0) s))
+(define (one-like s) ((ext1-ρ (λ (x) 1.0) (λ (x) "1.0") 0) s))
 
 (include "test/test-A-autodiff.rkt")
 

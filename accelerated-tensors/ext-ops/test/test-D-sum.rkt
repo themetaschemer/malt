@@ -15,7 +15,27 @@
     (check-dual-equal? (d-sum a) (tensor 12 21))
     (check-dual-equal? ((∇¹ (λ (b) (d-sum (d* b b))))  a)
                        (list (tensor (tensor 6.0 8.0 10.0)
-                                     (tensor 12.0 14.0 16.0)))))
+                                     (tensor 12.0 14.0 16.0))))
+    (check-ρ-∇ (d-sum-cols a) (tensor 9 11 13)
+               (list (tensor (tensor 1 1 1)
+                             (tensor 1 1 1)))))
+
+  (let ((a (tensor
+            (tensor (tensor (tensor 3 4 5) (tensor 6 7 8))
+                    (tensor (tensor 8 7 6) (tensor 5 4 3)))
+            (tensor (tensor (tensor 1 2 3) (tensor 6 5 4))
+                    (tensor (tensor 7 8 9) (tensor 9 8 7))))))
+    (check-ρ-∇ (d-sum-cols a)
+               (tensor
+                (tensor (tensor 9 11 13)
+                        (tensor 13 11 9))
+                (tensor (tensor 7 7 7)
+                        (tensor 16 16 16)))
+               (list (tensor
+                      (tensor (tensor (tensor 1 1 1) (tensor 1 1 1))
+                              (tensor (tensor 1 1 1) (tensor 1 1 1)))
+                      (tensor (tensor (tensor 1 1 1) (tensor 1 1 1))
+                              (tensor (tensor 1 1 1) (tensor 1 1 1)))))))
 
   (define dot-product
     (λ (a b)
