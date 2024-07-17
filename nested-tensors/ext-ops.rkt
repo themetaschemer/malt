@@ -19,7 +19,7 @@
 
          +-ρ --ρ *-ρ /-ρ
          expt-ρ exp-ρ log-ρ abs-ρ
-         rectify-ρ sqrt-ρ sqr-ρ)
+         rectify-ρ sqrt-ρ sqr-ρ zeroes-ρ)
 
 (provide =-0-0 <-0-0 <=-0-0 >-0-0 >=-0-0
          =-1 <-1 >-1 <=-1 >=-1 !=-1)
