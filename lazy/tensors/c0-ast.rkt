@@ -37,6 +37,10 @@
                             tp-t0 tp-t1 tp-z
                             out-ref0 out-ref1 i)
   #:transparent)
+(struct tcomp-prim1-ρ tcomp (f f-acc sign shape-fn tp) #:transparent)
+(struct tcomp-prim1-∇ tcomp (f f-acc sign shape-fn tp zp) #:transparent)
+(struct tcomp-prim2-ρ tcomp (f f-acc sign shape-fn tp-t tp-u) #:transparent)
+(struct tcomp-prim2-∇ tcomp (f f-acc sign shape-fn tp-t tp-u zp out-ref0 out-ref1 i) #:transparent)
 (struct tcomp-reshape tcomp (s tp) #:transparent)
 (struct tcomp-let tcomp (lhs rhs body) #:transparent)
 (struct tcomp-var tcomp (name) #:transparent)
@@ -180,6 +184,25 @@
                (tpromise-sign tp-t0) (tpromise-sign tp-t1) (tpromise-sign tp-z)
                #"dsr" (number->bytes i)))))
 
+(define gs-prim1-ρ
+  (λ (prim-sign tp)
+    (box (list #"p1r" (string->bytes prim-sign) (tpromise-sign tp)))))
+
+(define gs-prim2-ρ
+  (λ (signature tp-t tp-u)
+    (box (list #"p2r" (string->bytes signature)
+               (tpromise-sign tp-t) (tpromise-sign tp-u)))))
+
+(define gs-prim1-∇
+  (λ (signature tp zp)
+    (box (list #"p1n" (string->bytes signature) (tpromise-sign tp) (tpromise-sign zp)))))
+
+(define gs-prim2-∇
+  (λ (signature tp-t0 tp-t1 tp-z i)
+    (box (list #"p2n" (string->bytes signature)
+               (tpromise-sign tp-t0) (tpromise-sign tp-t1) (tpromise-sign tp-z)
+               #"dsr" (number->bytes i)))))
+
 (define gs-reshape
   (λ (shape tp)
     (box (list* #"r" (tpromise-sign tp) (map number->bytes shape)))))
@@ -278,6 +301,42 @@
        (gdst-ext2-∇ tp-t0 tp-t1 tp-z)
        (gs-ext2-∇ prim-sign r0 r1 tp-t0 tp-t1 tp-z i)))))
 
+(define tpmake-prim1-ρ
+  (λ (f f-acc prim-sign shape-fn tp)
+    (tpromise (tcomp-prim1-ρ f f-acc prim-sign shape-fn tp)
+              (shape-fn (tpromise-shape tp))
+              (box (list (tpromise-dst tp)))
+              (gs-prim1-ρ prim-sign tp))))
+
+(define tpmake-prim2-ρ
+  (λ (f f-acc prim-sign shape-fn tp-t tp-u)
+    (tpromise
+       (tcomp-prim2-ρ f f-acc prim-sign shape-fn tp-t tp-u)
+       (shape-fn (tpromise-shape tp-t) (tpromise-shape tp-u))
+       (box (list (tpromise-dst tp-t) (tpromise-dst tp-u)))
+       (gs-prim2-ρ prim-sign tp-t tp-u))))
+
+(define tpmake-prim1-∇
+  (λ (f f-acc prim-sign shape-fn tp zp)
+    (let ((zp (ensure-tpromise zp)))
+      (tpromise
+       (tcomp-prim1-∇ f f-acc prim-sign shape-fn tp zp)
+       (tpromise-shape tp)
+       (box (list (tpromise-dst tp) (tpromise-dst zp)))
+       (gs-prim1-∇ prim-sign tp zp)))))
+
+(define tpmake-prim2-∇
+  (λ (fᵈ fᵈ-acc prim-sign shape-fn tp-t0 tp-t1 tp-z out-ref0 out-ref1 i)
+    (let ((tp-t0 (ensure-tpromise tp-t0))
+          (tp-t1 (ensure-tpromise tp-t1))
+          (tp-z (ensure-tpromise tp-z)))
+      (tpromise
+       (tcomp-prim2-∇ fᵈ fᵈ-acc prim-sign shape-fn
+                     tp-t0 tp-t1 tp-z out-ref0 out-ref1 i)
+       (if (zero? i) (tpromise-shape tp-t0) (tpromise-shape tp-t1))
+       (gdst-ext2-∇ tp-t0 tp-t1 tp-z) ;; dst constucted in the same way as ext2-∇
+       (gs-prim2-∇ prim-sign tp-t0 tp-t1 tp-z i)))))
+
 (define tpmake-reshape
   (λ (tp shape)
     (tpromise
@@ -295,6 +354,10 @@
          (struct-out tcomp-ext2-ρ)
          (struct-out tcomp-ext1-∇)
          (struct-out tcomp-ext2-∇)
+         (struct-out tcomp-prim1-ρ)
+         (struct-out tcomp-prim2-ρ)
+         (struct-out tcomp-prim1-∇)
+         (struct-out tcomp-prim2-∇)
          (struct-out tcomp-reshape)
          (struct-out tcomp-let)
          (struct-out tcomp-var)
@@ -314,4 +377,8 @@
          tpmake-ext2-ρ
          tpmake-ext1-∇
          tpmake-ext2-∇
+         tpmake-prim1-ρ
+         tpmake-prim2-ρ
+         tpmake-prim1-∇
+         tpmake-prim2-∇
          tpmake-reshape)

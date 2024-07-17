@@ -3,6 +3,8 @@
   (require "B-test-programs.rkt")
   (require "0-lazy.rkt")
   (require "c2-interpreter.rkt")
+  (require (prefix-in acc: (only-in "../../accelerated-tensors/autodiff.rkt"
+                                    make-printable)))
   (require (prefix-in acc: "../../accelerated-tensors/tensors.rkt"))
 
   (define current-test-program-name (make-parameter #f))
@@ -14,7 +16,7 @@
         (('data-segment ds)
          ('signature signature)
          ('input-computation (tpromise-tensor tp))
-         ('expected-interpretation interp-tp)
+         ('expected-interpretation (acc:make-printable interp-tp))
          ('test-name (current-test-program-name)))
       (for ((d ds))
         (unless (or (number? d)
@@ -44,7 +46,7 @@
                               " extract-common-subexpression doesn't"
                               " match expected interpretation. Actual "
                               "interpretation: ~a~n")
-                             interp-extracted)))
+                             (acc:make-printable interp-extracted))))
               (let* ((gr (generate-racket extracted))
                      (rkt (compile-racket gr))
                      (interp-rkt (interp-racket rkt ds)))
@@ -54,7 +56,7 @@
                                 "Result of interpreting compiled racket code doesn't"
                                 " match expected interpretation. Actual "
                                 "interpretation: ~a~n")
-                               interp-rkt)))
+                               (acc:make-printable interp-rkt))))
                 (hash-set! (cache) signature rkt)
                 (compile-tensor tp)
                 (unless (eqv? (hash-count (cache)) 1)

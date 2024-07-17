@@ -1,12 +1,13 @@
 #lang racket
 
-(require (only-in "../../accelerated-tensors/ext-impl.rkt"
-                  new-vec
-                  apply-flat-ρ-fn-1
-                  apply-flat-ρ-fn-2
-                  apply-flat-∇-fn-1
-                  apply-flat-∇-fn-2))
+(require (only-in "../tensors/c0-ast.rkt"
+                  tpmake-prim1-ρ
+                  tpmake-prim2-ρ
+                  tpmake-prim1-∇
+                  tpmake-prim2-∇))
 (require "../tensors.rkt")
+(require (only-in "../tensors/c1-racket-runtime.rkt" ext2-∇-result))
+(require (only-in "../tensors/c0-ast.rkt" tcomp-ds-ref))
 (require "A-autodiff.ss")
 
 (struct prim (ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn shape-fn signature expects-prealloc? proc)
@@ -21,8 +22,12 @@
         (set! id (add1 id))
         (prim ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn shape prim-sign expects-prealloc?
               (λ (da)
-                (prim1-dual (if #;#f expects-prealloc? (preallocated->functional-1-ρ ρ-fn shape) ρ-fn)
-                            (if #;#f expects-prealloc? (preallocated->functional-1-∇ ∇-fn shape) ∇-fn)
+                (prim1-dual (if expects-prealloc?
+                                (preallocated->functional-1-ρ ρ-fn ρ-acc-fn prim-sign shape)
+                                ρ-fn)
+                            (if expects-prealloc?
+                                (preallocated->functional-1-∇ ∇-fn ∇-acc-fn prim-sign shape)
+                                ∇-fn)
                             da)))))))
 
 ;; TODO: Convert the use of force* into the construction of an AST so that we
@@ -43,8 +48,12 @@
         (set! id (add1 id))
         (prim ρ-fn ρ-acc-fn ∇-fn ∇-acc-fn shape prim-sign expects-prealloc?
               (λ (da db)
-                (prim2-dual (if expects-prealloc? (preallocated->functional-2-ρ ρ-fn shape) ρ-fn)
-                            (if expects-prealloc? (preallocated->functional-2-∇ ∇-fn shape) ∇-fn)
+                (prim2-dual (if expects-prealloc?
+                                (preallocated->functional-2-ρ ρ-fn ρ-acc-fn prim-sign shape)
+                                ρ-fn)
+                            (if expects-prealloc?
+                                (preallocated->functional-2-∇ ∇-fn ∇-acc-fn prim-sign shape)
+                                ∇-fn)
                             da db)))))))
 
 (define prim2-dual
@@ -64,41 +73,28 @@
 ;;----------------------------
 
 (define preallocated->functional-1-ρ
-  (λ (ρ-fn shape-fn)
+  (λ (ρ-fn ρ-fn-acc prim-sign shape-fn)
     (λ (ra)
-      (force*1 ra
-               (λ (ra)
-                 (apply-flat-ρ-fn-1 ρ-fn ra shape-fn))))))
+      (tpmake-prim1-ρ ρ-fn ρ-fn-acc prim-sign shape-fn ra))))
 
 (define preallocated->functional-1-∇
-  (λ (∇-fn shape-fn)
+  (λ (∇-fn ∇-fn-acc prim-sign shape-fn)
     (λ (ra z)
-      (force*2
-       (λ ()
-         (values ra z))
-       (λ (ra z)
-         (apply-flat-∇-fn-1 ∇-fn ra z shape-fn))))))
+      (tpmake-prim1-∇ ∇-fn ∇-fn-acc prim-sign shape-fn ra z))))
 
 (define preallocated->functional-2-ρ
-  (λ (ρ-fn shape-fn)
+  (λ (ρ-fn ρ-fn-acc prim-sign shape-fn)
     (λ (ra rb)
-      (force*2
-       (λ ()
-         (values ra rb))
-       (λ (ra rb)
-         (apply-flat-ρ-fn-2 ρ-fn ra rb shape-fn))))))
+      (tpmake-prim2-ρ ρ-fn ρ-fn-acc prim-sign shape-fn ra rb))))
 
 (define preallocated->functional-2-∇
-  (λ (∇-fn shape-fn)
+  (λ (∇-fn ∇-fn-acc prim-sign shape-fn)
     (λ (ra rb z)
-      (force*2
-       (λ ()
-         (values ra rb))
-       (λ (ra rb)
-         (force*1
-          z
-          (λ (z)
-            (apply-flat-∇-fn-2 ∇-fn ra rb z shape-fn))))))))
+      (let ((out-ref0 (ext2-∇-result (tcomp-ds-ref #f)))
+            (out-ref1 (ext2-∇-result (tcomp-ds-ref #f))))
+        (values
+         (tpmake-prim2-∇ ∇-fn ∇-fn-acc prim-sign shape-fn ra rb z out-ref0 out-ref1 0)
+         (tpmake-prim2-∇ ∇-fn ∇-fn-acc prim-sign shape-fn ra rb z out-ref0 out-ref1 1))))))
 
 ;;----------------------------
 ;; Dualized tensor op creators

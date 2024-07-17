@@ -8,6 +8,11 @@
   (define r1-t2 (tensor 5.0 6.0 7.0))
   (define r1-t1 (tensor 3.0 4.0 5.0 6.0 7.0))
 
+  (check-ρ-∇ (concat-1-1 r1-t2 r1-t1)
+             (tensor 5.0 6.0 7.0 3.0 4.0 5.0 6.0 7.0)
+             (list (tensor 1.0 1.0 1.0)
+                   (tensor 1.0 1.0 1.0 1.0 1.0)))
+
   (check-dual-equal?
    (d-concat r2-t1 r1-t2)
    (tensor (tensor 3.0 4.0 5.0 6.0 7.0)
