@@ -8,6 +8,8 @@
 (require "lazy/ext-ops.rkt")
 
 (provide
+ tolerance
+
  len ref refr
 
  tref tlen list->tensor tensor build-tensor
@@ -32,7 +34,7 @@
              (d-concat concat) (d-concat-n concat-n))
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
- exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
+ exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ zeroes-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ
  flatten-ρ concat-ρ

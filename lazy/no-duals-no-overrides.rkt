@@ -20,7 +20,7 @@
 
  ;; From ext-ops
  +-ρ --ρ *-ρ /-ρ rectify-ρ
- exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
+ exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ zeroes-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ
  concat-ρ concat-n-ρ flatten-ρ
