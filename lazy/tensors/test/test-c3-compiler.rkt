@@ -3,7 +3,7 @@
   (require "B-test-programs.rkt")
   (require "0-lazy.rkt")
   (require "c2-interpreter.rkt")
-  (require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
+  (require (prefix-in acc: "../../accelerated-tensors/tensors.rkt"))
 
   (define current-test-program-name (make-parameter #f))
   (define-check (check-compiler-invariants tp)
@@ -18,7 +18,7 @@
          ('test-name (current-test-program-name)))
       (for ((d ds))
         (unless (or (number? d)
-                    (flat:flat? d)
+                    (acc:flat? d)
                     (eqv? d 'uncalculated))
           (fail-check (format (string-append "Data segment should only contain flat tensors "
                                              ", the symbol 'uncalculated or numbers."
@@ -27,34 +27,34 @@
       (parameterize ((cache (make-hash)))
         (let* ((instrs-dsr (generate-ds-refs tp))
                (interp-dsr (interp-tensor instrs-dsr)))
-          (unless (flat:tensor-equal? interp-dsr interp-tp)
+          (unless (acc:tensor-equal? interp-dsr interp-tp)
             (fail-check (format
                          (string-append
                           "Result of interpreting pass generate-ds-ref doesn't"
                           " match expected interpretation. Actual "
-                          "interpretation: ~a~n"))
-                        interp-dsr))
+                          "interpretation: ~a~n")
+                         interp-dsr)))
           (let ((counter (count-references instrs-dsr)))
             (let* ((extracted (extract-common-subexpressions instrs-dsr counter))
                    (interp-extracted (interp-tensor extracted)))
-              (unless (flat:tensor-equal? interp-extracted interp-tp)
+              (unless (acc:tensor-equal? interp-extracted interp-tp)
                 (fail-check (format
                              (string-append
                               "Result of interpreting pass"
                               " extract-common-subexpression doesn't"
                               " match expected interpretation. Actual "
-                              "interpretation: ~a~n"))
-                            interp-extracted))
+                              "interpretation: ~a~n")
+                             interp-extracted)))
               (let* ((gr (generate-racket extracted))
                      (rkt (compile-racket gr))
                      (interp-rkt (interp-racket rkt ds)))
-                (unless (flat:tensor-equal? interp-rkt interp-tp)
+                (unless (acc:tensor-equal? interp-rkt interp-tp)
                   (fail-check (format
                                (string-append
                                 "Result of interpreting compiled racket code doesn't"
                                 " match expected interpretation. Actual "
-                                "interpretation: ~a~n"))
-                              interp-rkt))
+                                "interpretation: ~a~n")
+                               interp-rkt)))
                 (hash-set! (cache) signature rkt)
                 (compile-tensor tp)
                 (unless (eqv? (hash-count (cache)) 1)
@@ -167,27 +167,27 @@
            (else (error 'cdsr-list->tensor "Unexpected: ~a" l))))]
       [(tcomp-tref tp _) (count-tcomp-var tp)]
       [(tcomp-trefs tp _) (count-tcomp-var tp)]
-      [(tcomp-ext2-∇ fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z
+      [(tcomp-ext2-∇ fᵈ _ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z
                      out-ref0
                      out-ref1 i)
        (let ((c0 (count-tcomp-var tp-t0))
              (c1 (count-tcomp-var tp-t1))
              (cz (count-tcomp-var tp-z)))
          (+ c0 c1 cz))]
-      [(tcomp-ext1-∇ tp zp f sign m shape-fn)
+      [(tcomp-ext1-∇ tp zp f _ sign m shape-fn)
        (let ((ct (count-tcomp-var tp))
              (cz (count-tcomp-var zp)))
          (+ ct cz))]
-      [(tcomp-ext2-ρ-scalar f sign tp-t tp-u)
+      [(tcomp-ext2-ρ-scalar f _ sign tp-t tp-u)
        (let ((ct (count-tcomp-var tp-t))
              (cu (count-tcomp-var tp-u)))
          (+ ct cu))]
-      [(tcomp-ext2-ρ tp-t tp-u f sign m n shape-fn)
+      [(tcomp-ext2-ρ tp-t tp-u f _ sign m n shape-fn)
        (let ((ct (count-tcomp-var tp-t))
              (cu (count-tcomp-var tp-u)))
          (+ ct cu))]
-      [(tcomp-ext1-ρ-scalar f sign tp) (count-tcomp-var tp)]
-      [(tcomp-ext1-ρ f sign m shape-fn tp) (count-tcomp-var tp)]
+      [(tcomp-ext1-ρ-scalar f _ sign tp) (count-tcomp-var tp)]
+      [(tcomp-ext1-ρ f _ sign m shape-fn tp) (count-tcomp-var tp)]
       [(tcomp-reshape s tp) (count-tcomp-var tp)]
       [(tcomp-ds-ref i) 0]
       [(tcomp-let lhs rhs body)

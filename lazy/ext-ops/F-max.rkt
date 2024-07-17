@@ -1,47 +1,84 @@
 #lang racket
 
+(require string-interpolation)
+(require "../../accelerated-tensors/ext-impl.rkt")
 (require (only-in "../tensors.rkt" ext1-ρ))
 (require "../autodiff.rkt")
 
 (define max-1-ρ
   (λ (v0 i0 stride0
       v-out i-out stride-out)
-    (vector-set! v-out i-out
-      (for/fold ([max 0.0])
+    (vset! v-out i-out
+      (for/fold ([max -inf.0])
           ([i (in-range i0 (+ i0 stride0))])
-        (let ((v (vector-ref v0 i)))
+        (let ((v (vref v0 i)))
           (cond
             ((> v max) v)
             (else max)))))))
 
+(define max-1-ρ-acc
+  (λ (v0 i0 stride0
+      v-out i-out stride-out)
+    #<<EOF
+    float max = -INFINITY;
+    for(int i=@{i0}; i<@{i0}+@{stride0}; i++) {
+        max = fmax(max, @{v0}[i]);
+    }
+    @{v-out}[@{i-out}] = max;
+EOF
+    ))
+
 (define max-1-∇
   (λ (g0 v0 i0 stride0
       vz iz stride-z)
-    (let ((z (vector-ref vz iz)))
+    (let ((z (vref vz iz)))
       (for/fold ([max -inf.0]
                  [max-i -1] #:result
                  (for ([i (in-range i0 (+ i0 stride0))])
-                   (cond
-                     ((= i (+ i0 max-i)) (vector-set! g0 i z))
-                     (else (vector-set! g0 i 0.0)))))
+                   (when (= i (+ i0 max-i))
+                     (vset! g0 i (+ (vref g0 i) z)))))
                 ([i (in-range i0 (+ i0 stride0))])
-        (let ((v (vector-ref v0 i)))
+        (let ((v (vref v0 i)))
           (cond
             ((> v max) (values v (- i i0)))
             (else (values max max-i))))))))
+
+(define max-1-∇-acc
+  (λ (g0 v0 i0 stride0
+      vz iz stride-z)
+    #<<EOF
+    float z = @{vz}[@{iz}];
+    float max = -INFINITY;
+    int max_i = -1;
+    for(int i=@{i0}; i<@{i0}+@{stride0}; i++) {
+        float v = @{v0}[i];
+        if(v > max) {
+            max = v;
+            max_i = i - @{i0};
+        }
+    }
+    for(int i=@{i0}; i<@{i0}+@{stride0}; i++) {
+        if(i == @{i0}+max_i) {
+            @{g0}[i] += z;
+        } else {
+            @{g0}[i] += 0.0;
+        }
+    }
+EOF
+    ))
 
 (define max-shape
   (λ (st)
     (cdr st)))
 
 (define max-1
-  (prim1 max-1-ρ max-1-∇ max-shape #t))
+  (prim1 max-1-ρ max-1-ρ-acc max-1-∇ max-1-∇-acc max-shape #t))
 
 (define d-max
   (ext1 max-1 1))
 
 (define max-ρ
-  (ext1-ρ max-1-ρ 1 max-shape #t))
+  (ext1-ρ max-1-ρ max-1-ρ-acc 1 max-shape #t))
 
 (include "test/test-F-max.rkt")
 
