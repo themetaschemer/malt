@@ -3,9 +3,6 @@
 ;; Extended operators are non-dualized
 (require "../base-no-duals.rkt")
 
-(define zeroes
-  (ext1-ρ (λ (_) 0.0) (λ (_) "0.0") 0))
-
 (define smooth
   (λ (decay-rate average g)
     (+ (* decay-rate average)
