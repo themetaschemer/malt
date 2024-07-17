@@ -121,6 +121,9 @@
   (λ (x)
     (*-ρ x x)))
 
+(define zeroes-ρ
+  (ext1-ρ (λ (_) 0.0) 0))
+
 (include "test/test-A-scalar-ops.rkt")
 
 (provide +-0-0 --0-0 *-0-0 /-0-0 expt-0-0
@@ -132,4 +135,4 @@
 
          +-ρ --ρ *-ρ /-ρ
          expt-ρ exp-ρ log-ρ abs-ρ
-         rectify-ρ sqrt-ρ sqr-ρ)
+         rectify-ρ sqrt-ρ sqr-ρ zeroes-ρ)
