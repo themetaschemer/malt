@@ -4,11 +4,13 @@
          ffi/unsafe
          opencl/c
          string-interpolation
-         "0-vectors.rkt")
+         "0-vectors.rkt"
+         "../../impl-loader.rkt")
 
 
 (define context (make-parameter #f))
 (define command-queue (make-parameter #f))
+(define device (make-parameter #f))
 
 (define (cvector->vector cv)
   (build-vector (cvector-length cv)
@@ -17,20 +19,32 @@
 (define (with-opencl th)
   (let* ([platform (cvector-ref (clGetPlatformIDs:vector) 0)]
          [devices (clGetDeviceIDs:vector platform 'CL_DEVICE_TYPE_GPU)]
-         [device-idx 0]
-         [device (cvector-ref devices device-idx)])
+         [device-idx 0])
     (parameterize* ([context #f]
-                    [command-queue #f])
+                    [command-queue #f]
+                    [device (cvector-ref devices device-idx)])
       (dynamic-wind
        (λ ()
          (context (clCreateContext #f (cvector->vector devices)))
-         (command-queue (clCreateCommandQueue (context) device '())))
+         (command-queue (clCreateCommandQueue (context) (device) '())))
        th
        (λ ()
          (when (command-queue)
            (clReleaseCommandQueue (command-queue)))
          (when (context)
            (clReleaseContext (context))))))))
+
+(define print-cl-build-log
+  (λ (program _)
+    (when (debug-kernel?)
+      (printf "Program Source:~n~a~n"
+              (clGetProgramInfo:generic program 'CL_PROGRAM_SOURCE))
+      (printf "Build status:~a~n"
+              (clGetProgramBuildInfo:generic program (device)
+                                             'CL_PROGRAM_BUILD_STATUS))
+      (printf "Build log:~a~n"
+              (clGetProgramBuildInfo:generic program (device)
+                                             'CL_PROGRAM_BUILD_LOG)))))
 
 (define (binary-expr rator rand1 rand2)
   (string-append "(" rand1 " " rator " " rand2 ")"))
@@ -146,7 +160,13 @@ EOF
                                                      1
                                                      (string->bytes/utf-8
                                                       kernel-code))))
-           (clBuildProgram program (make-vector 0) (make-bytes 0))
+           (clBuildProgram program (vector (device)) (make-bytes 0)
+                           ;; This extra argument works only because Darshal
+                           ;; uses a modified version of the opencl/c library
+                           ;; which makes the clBuildProgram function accept an
+                           ;; additional callback argument for debugging just
+                           ;; like the original C API.
+                           print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf0)
            (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -175,7 +195,7 @@ EOF
   (λ (f-acc base-shape out-shape)
     (unless (and (null? base-shape) (null? out-shape))
       (error 'ρ1-functional-non-scalar-acc
-             (string-append "Functional primitives can only accept and"
+             (string-append "Accelerated functional primitives can only accept and"
                             " return scalars, so try defining a"
                             " preallocated primitive instead."
                             " Input and output shape found: ~a ~a")
@@ -201,7 +221,7 @@ __kernel void Kernel (__global float* g0,
     int i0 = 0 + (iz / stridez) * stride0;
 
 @{(prim1-∇-f "g0" "v0" "i0" "stride0"
-                  "vz" "iz" "stride-z")}
+                  "vz" "iz" "stridez")}
 }
 EOF
   )
@@ -233,13 +253,13 @@ EOF
                                        (* (ctype-sizeof _cl_float)
                                           size0)
                                        #f))
-
            (set! program (clCreateProgramWithSource (context)
                                                     (make-vector
                                                      1
                                                      (string->bytes/utf-8
                                                       kernel-code))))
-           (clBuildProgram program (make-vector 0) (make-bytes 0))
+           (clBuildProgram program (vector (device)) (make-bytes 0)
+                           print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf-g)
            (clSetKernelArg:_cl_mem kernel 1 buf0)
@@ -271,7 +291,7 @@ EOF
   (λ (f-acc base-shape out-shape)
     (unless (and (null? base-shape) (null? out-shape))
       (error '∇1-functional-non-scalar-acc
-             (string-append "Functional primitives can only accept and"
+             (string-append "Accelerated functional primitives can only accept and"
                             " return scalars, so try defining a"
                             " preallocated primitive instead."
                             " Input and output shape found: ~a ~a")
@@ -340,7 +360,8 @@ EOF
                           (make-vector
                            1
                            (string->bytes/utf-8 kernel-code))))
-           (clBuildProgram program (make-vector 0) (make-bytes 0))
+           (clBuildProgram program (vector (device)) (make-bytes 0)
+                           print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf0)
            (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -373,7 +394,7 @@ EOF
   (λ (f-acc t-shape u-shape out-shape)
     (unless (and (null? t-shape) (null? u-shape) (null? out-shape))
       (error 'ρ2-functional-non-scalar-acc
-             (string-append "Functional primitives can only accept and"
+             (string-append "Accelerated functional primitives can only accept and"
                             " return scalars, so try defining a"
                             " preallocated primitive instead."
                             " Input 1, input 2 and output shape found: ~a ~a ~a")
@@ -386,98 +407,70 @@ EOF
 EOF
         ))))
 
-(define (ext2-∇-kernel-atomic prim2-∇-f strides)
-  (let*-values (((prim-effect0 prim-effect1) (prim2-∇-f "g"
-                                                        "v0" "i0" "stride0"
-                                                        "v1" "i1" "stride1"
-                                                        "vz" "iz" "stride_z"))
-                ((generate-idxs) (idx-exprs strides 0 0))
-                ((i0-expr i1-expr) (generate-idxs "iz")))
-    #<<EOF
-__kernel void Kernel (__global float* g0,
-                      __global float* g1,
-                      __global float* v0,
-                      int stride0,
-                      __global float* v1,
-                      int stride1,
-                      __global float* vz,
-                      int stride_z)
-{
-
-    int iz = get_global_id(0) * stride_z;
-    int i0 = @{i0-expr};
-    int i1 = @{i1-expr};
-    __global float *g;
-
-    g = g0;
-@{prim-effect0}
-
-    g = g1;
-@{prim-effect1}
-}
-EOF
-    ))
-
-(define (ext2-∇-kernel-split prim2-∇-f strides
-                             s0 s1 r0 r1 s-out r-out)
+(define (ext2-∇-kernel prim2-∇-f strides
+                       s0 s1 r0 r1 s-out r-out)
   (let*-values (((prim-effect0 prim-effect1) (prim2-∇-f "g"
                                                         "v0" "i0" "stride0"
                                                         "v1" "i1" "stride1"
                                                         "vz" "iz" "stride_z"))
                 ((repeats0 repeats1) (calc-repeats s0 s1 r0 r1 s-out r-out))
                 ((generate-idxs) (idx-exprs strides 0 0))
-                ((generate-idxs-inv) (idx-exprs-inv strides 0 repeats0 repeats1 s-out))
+                ((generate-idxs-inv) (idx-exprs-inv strides 0
+                                                    repeats0 repeats1 s-out))
                 ((i0-expr i1-expr) (generate-idxs "iz"))
                 ((iz-expr0 iz-expr1) (generate-idxs-inv "i0" "i1" "i_rep")))
-    (values
-     #<<EOF
-__kernel void Kernel (__global float* g,
+    #<<EOF
+__kernel void Kernel (__global float* g0,
+                      __global float* g1,
                       __global float* v0,
                       int stride0,
+                      int size0,
                       __global float* v1,
                       int stride1,
+                      int size1,
                       __global float* vz,
                       int stride_z)
 {
-    int i0 = get_global_id(0) * stride0;
+    int g_id = get_global_id(0);
+    int i0_g = g_id * stride0;
+    int i1_g = g_id * stride1;
+    __global float *g;
+    int i0, i1, iz;
 
-    for(int i_rep=0; i_rep<@{repeats0}; i_rep++) {
-        int iz = @{iz-expr0};
-        int i1 = @{i1-expr};
+    if (i0_g < size0) {
+        g = g0;
+        i0 = i0_g;
+        for(int i_rep=0; i_rep<@{repeats0}; i_rep++) {
+            iz = @{iz-expr0};
+            i1 = @{i1-expr};
 
 @{prim-effect0}
+        }
     }
-}
-EOF
 
-     #<<EOF
-__kernel void Kernel (__global float* g,
-                      __global float* v0,
-                      int stride0,
-                      __global float* v1,
-                      int stride1,
-                      __global float* vz,
-                      int stride_z)
-{
-    int i1 = get_global_id(0) * stride1;
-
-    for(int i_rep=0; i_rep<@{repeats1}; i_rep++) {
-        int iz = @{iz-expr1};
-        int i0 = @{i0-expr};
+    if (i1_g < size1) {
+        g = g1;
+        i1 = i1_g;
+        for(int i_rep=0; i_rep<@{repeats1}; i_rep++) {
+            iz = @{iz-expr1};
+            i0 = @{i0-expr};
 
 @{prim-effect1}
+        }
     }
 }
 EOF
-     )))
+    ))
 
-(define (run-prim2-∇-atomic! kernel-code g0 g1
-                             v0 off0 size0 stride0
-                             v1 off1 size1 stride1
-                             vz offz size-z stride-z)
+(define (run-prim2-∇! kernel-code g0 g1
+                      v0 off0 size0 stride0
+                      v1 off1 size1 stride1
+                      vz offz size-z stride-z)
   (with-opencl
     (λ ()
-      (let* ([buf0 #f]
+      (let* ([global-work-size (max (/ size0 stride0)
+                                    (/ size1 stride1))]
+             [buf0 #f]
              [buf1 #f]
              [buf-z #f]
              [buf-g0 #f]
@@ -513,19 +506,22 @@ EOF
            (set! program (clCreateProgramWithSource
                           (context)
                           (make-vector 1 (string->bytes/utf-8 kernel-code))))
-           (clBuildProgram program (make-vector 0) (make-bytes 0))
+           (clBuildProgram program (vector (device)) (make-bytes 0)
+                           print-cl-build-log)
            (set! kernel (clCreateKernel program #"Kernel"))
            (clSetKernelArg:_cl_mem kernel 0 buf-g0)
            (clSetKernelArg:_cl_mem kernel 1 buf-g1)
            (clSetKernelArg:_cl_mem kernel 2 buf0)
            (clSetKernelArg:_cl_int kernel 3 stride0)
-           (clSetKernelArg:_cl_mem kernel 4 buf1)
-           (clSetKernelArg:_cl_int kernel 5 stride1)
-           (clSetKernelArg:_cl_mem kernel 6 buf-z)
-           (clSetKernelArg:_cl_int kernel 7 stride-z))
+           (clSetKernelArg:_cl_int kernel 4 size0)
+           (clSetKernelArg:_cl_mem kernel 5 buf1)
+           (clSetKernelArg:_cl_int kernel 6 stride1)
+           (clSetKernelArg:_cl_int kernel 7 size1)
+           (clSetKernelArg:_cl_mem kernel 8 buf-z)
+           (clSetKernelArg:_cl_int kernel 9 stride-z))
          (λ ()
            (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
-                                               (make-vector 1 (/ size-z stride-z))
+                                               (make-vector 1 global-work-size)
                                                (make-vector 0)
                                                (make-vector 0)))
            (set! event (clEnqueueReadBuffer (command-queue) buf-g0 'CL_TRUE 0
@@ -552,84 +548,11 @@ EOF
            (when buf0
              (clReleaseMemObject buf0))))))))
 
-(define (run-prim2-∇-split! kernel-code0 kernel-code1 g0 g1
-                            v0 off0 size0 stride0
-                            v1 off1 size1 stride1
-                            vz offz size-z stride-z)
-  (with-opencl
-      (λ ()
-        (define (run! kernel-code g size-in stride-in)
-          (let* ([buf0 #f]
-                 [buf1 #f]
-                 [buf-z #f]
-                 [buf-g #f]
-                 [program #f]
-                 [kernel #f]
-                 [event #f])
-            (dynamic-wind
-             (λ ()
-               ;; Exclude memory consumed by elements before offset of input vector v0
-               (set! buf0 (clCreateBuffer (context)
-                                          '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                          (* (ctype-sizeof _cl_float)
-                                             size0)
-                                          (vref-cpointer v0 off0)))
-               (set! buf1 (clCreateBuffer (context)
-                                          '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                          (* (ctype-sizeof _cl_float)
-                                             size1)
-                                          (vref-cpointer v1 off1)))
-               (set! buf-z (clCreateBuffer (context)
-                                           '(CL_MEM_USE_HOST_PTR CL_MEM_READ_ONLY)
-                                           (* (ctype-sizeof _cl_float)
-                                              size-z)
-                                           (vref-cpointer vz offz)))
-               (set! buf-g (clCreateBuffer (context) 'CL_MEM_WRITE_ONLY
-                                           (* (ctype-sizeof _cl_float)
-                                              size-in)
-                                           #f))
-               (set! program (clCreateProgramWithSource
-                              (context)
-                              (make-vector 1 (string->bytes/utf-8 kernel-code))))
-               (clBuildProgram program (make-vector 0) (make-bytes 0))
-               (set! kernel (clCreateKernel program #"Kernel"))
-               (clSetKernelArg:_cl_mem kernel 0 buf-g)
-               (clSetKernelArg:_cl_mem kernel 1 buf0)
-               (clSetKernelArg:_cl_int kernel 2 stride0)
-               (clSetKernelArg:_cl_mem kernel 3 buf1)
-               (clSetKernelArg:_cl_int kernel 4 stride1)
-               (clSetKernelArg:_cl_mem kernel 5 buf-z)
-               (clSetKernelArg:_cl_int kernel 6 stride-z))
-             (λ ()
-               (set! event (clEnqueueNDRangeKernel (command-queue) kernel 1
-                                                   (make-vector 1 (/ size-in stride-in))
-                                                   (make-vector 0)
-                                                   (make-vector 0)))
-               (set! event (clEnqueueReadBuffer (command-queue) buf-g 'CL_TRUE 0
-                                                (* (ctype-sizeof _cl_float)
-                                                   size-in)
-                                                (vec->cpointer g) (vector event))))
-             (λ ()
-               (when kernel
-                 (clReleaseKernel kernel))
-               (when program
-                 (clReleaseProgram program))
-               (when buf-g
-                 (clReleaseMemObject buf-g))
-               (when buf-z
-                 (clReleaseMemObject buf-z))
-               (when buf1
-                 (clReleaseMemObject buf1))
-               (when buf0
-                 (clReleaseMemObject buf0))))))
-        (run! kernel-code0 g0 size0 stride0)
-        (run! kernel-code1 g1 size1 stride1))))
-
 (define functional->preallocated-2-∇-acc
   (λ (f-acc t-shape u-shape out-shape)
     (unless (and (null? t-shape) (null? u-shape) (null? out-shape))
       (error '∇2-functional-non-scalar-acc
-             (string-append "Functional primitives can only accept and"
+             (string-append "Accelerated functional primitives can only accept and"
                             " return scalars, so try defining a"
                             " preallocated primitive instead."
                             " Input 1, input 2 and output shape found: ~a ~a ~a")
@@ -652,6 +575,4 @@ EOF
 (provide run-prim1-ρ! functional->preallocated-1-ρ-acc ext1-ρ-kernel
          run-prim1-∇! functional->preallocated-1-∇-acc ext1-∇-kernel
          run-prim2-ρ! functional->preallocated-2-ρ-acc ext2-ρ-kernel
-         run-prim2-∇-atomic! run-prim2-∇-split!
-         functional->preallocated-2-∇-acc
-         ext2-∇-kernel-atomic ext2-∇-kernel-split)
+         run-prim2-∇! functional->preallocated-2-∇-acc ext2-∇-kernel)
