@@ -255,4 +255,8 @@
      (∇-acc-function f)
      (shape-fn f))))
 
-(provide prim1 prim2 ext1 ext2)
+(provide prim1 prim2 ext1 ext2
+         apply-flat-ρ-fn-1
+         apply-flat-ρ-fn-2
+         apply-flat-∇-fn-1
+         apply-flat-∇-fn-2)
