@@ -1,6 +1,6 @@
 #lang racket
-(require "../../flat-tensors/ext-impl.rkt")
-(require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
+(require "../../accelerated-tensors/ext-impl.rkt")
+(require (prefix-in acc: "../../accelerated-tensors/tensors.rkt"))
 (require file/xxhash32)
 
 ;; tensor computations
@@ -27,12 +27,12 @@
          (-> (Vector Number) Natural (Listof Natural)
              (Vector Number) Natural (Listof Natural)
              (Vector Number) Natural (Listof Natural))))
-(struct tcomp-ext1-ρ-scalar tcomp (f sign tp) #:transparent)
-(struct tcomp-ext1-ρ tcomp (f sign m shape-fn tp) #:transparent)
-(struct tcomp-ext2-ρ-scalar tcomp (f sign tp-t tp-u) #:transparent)
-(struct tcomp-ext2-ρ tcomp (tp-t tp-u f sign m n shape-fn) #:transparent)
-(struct tcomp-ext1-∇ tcomp (tp zp f sign m shape-fn) #:transparent)
-(struct tcomp-ext2-∇ tcomp (fᵈ
+(struct tcomp-ext1-ρ-scalar tcomp (f f-acc sign tp) #:transparent)
+(struct tcomp-ext1-ρ tcomp (f f-acc sign m shape-fn tp) #:transparent)
+(struct tcomp-ext2-ρ-scalar tcomp (f f-acc sign tp-t tp-u) #:transparent)
+(struct tcomp-ext2-ρ tcomp (tp-t tp-u f f-acc sign m n shape-fn) #:transparent)
+(struct tcomp-ext1-∇ tcomp (tp zp f f-acc sign m shape-fn) #:transparent)
+(struct tcomp-ext2-∇ tcomp (fᵈ fᵈ-acc
                             sign r0 r1 shape-fn
                             tp-t0 tp-t1 tp-z
                             out-ref0 out-ref1 i)
@@ -98,7 +98,7 @@
 
 (define gdst-trefs
   (λ (tp i-lst)
-    (box (list (tpromise-dst tp) (flat:list->tensor i-lst)))))
+    (box (list (tpromise-dst tp) (acc:list->tensor i-lst)))))
 
 (define gdst-ext2-∇
   (λ (tp-t0 tp-t1 tp-z)
@@ -216,24 +216,24 @@
               (gs-trefs tp))))
 
 (define tpmake-ext1-ρ-scalar
-  (λ (f signature tp shape)
-    (tpromise (tcomp-ext1-ρ-scalar f signature tp) shape
+  (λ (f f-acc prim-sign tp shape)
+    (tpromise (tcomp-ext1-ρ-scalar f f-acc prim-sign tp) shape
               (box (list (tpromise-dst tp)))
-              (gs-ext1-ρ-scalar signature tp))))
+              (gs-ext1-ρ-scalar prim-sign tp))))
 
 (define tpmake-ext1-ρ
-  (λ (f signature m shape-fn tp shape)
-    (tpromise (tcomp-ext1-ρ f signature m shape-fn tp)
+  (λ (f f-acc prim-sign m shape-fn tp shape)
+    (tpromise (tcomp-ext1-ρ f f-acc prim-sign m shape-fn tp)
               shape
               (box (list (tpromise-dst tp)))
-              (gs-ext1-ρ signature m tp))))
+              (gs-ext1-ρ prim-sign m tp))))
 
 (define tpmake-ext2-ρ-scalar
-  (λ (f signature tp-t tp-u shape)
-    (tpromise (tcomp-ext2-ρ-scalar f signature tp-t tp-u)
+  (λ (f f-acc prim-sign tp-t tp-u shape)
+    (tpromise (tcomp-ext2-ρ-scalar f f-acc prim-sign tp-t tp-u)
               shape
               (box (list (tpromise-dst tp-t) (tpromise-dst tp-u)))
-              (gs-ext2-ρ-scalar signature tp-t tp-u))))
+              (gs-ext2-ρ-scalar prim-sign tp-t tp-u))))
 
 (define ensure-tpromise
   (λ (v)
@@ -243,14 +243,14 @@
       (else v))))
 
 (define tpmake-ext2-ρ
-  (λ (tp-t tp-u f signature m n shape-fn shape)
+  (λ (tp-t tp-u f f-acc prim-sign m n shape-fn shape)
     (let ((tp-t (ensure-tpromise tp-t))
           (tp-u (ensure-tpromise tp-u)))
       (tpromise
-       (tcomp-ext2-ρ tp-t tp-u f signature m n shape-fn)
+       (tcomp-ext2-ρ tp-t tp-u f f-acc prim-sign m n shape-fn)
        shape
        (box (list (tpromise-dst tp-t) (tpromise-dst tp-u)))
-       (gs-ext2-ρ signature m n tp-t tp-u)))))
+       (gs-ext2-ρ prim-sign m n tp-t tp-u)))))
 
 ;; we invoke ensure-tpromise on just zp because it's the result of calling
 ;; force*1 which forces zp to be a non-tpromise value. We can ensure tp to
@@ -258,25 +258,25 @@
 ;; before passing it to this function, nor do we need scalar tp to be wrapped in
 ;; a tpromise.
 (define tpmake-ext1-∇
-  (λ (tp zp f signature m shape-fn shape)
+  (λ (tp zp f f-acc prim-sign m shape-fn shape)
     (let ((zp (ensure-tpromise zp)))
       (tpromise
-       (tcomp-ext1-∇ tp zp f signature m shape-fn)
+       (tcomp-ext1-∇ tp zp f f-acc prim-sign m shape-fn)
        shape
        (box (list (tpromise-dst tp) (tpromise-dst zp)))
-       (gs-ext1-∇ signature m tp zp)))))
+       (gs-ext1-∇ prim-sign m tp zp)))))
 
 (define tpmake-ext2-∇
-  (λ (fᵈ signature r0 r1 shape-fn tp-t0 tp-t1 tp-z out-ref0 out-ref1 i shape)
+  (λ (fᵈ fᵈ-acc prim-sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out-ref0 out-ref1 i shape)
     (let ((tp-t0 (ensure-tpromise tp-t0))
           (tp-t1 (ensure-tpromise tp-t1))
           (tp-z (ensure-tpromise tp-z)))
       (tpromise
-       (tcomp-ext2-∇ fᵈ signature r0 r1 shape-fn
+       (tcomp-ext2-∇ fᵈ fᵈ-acc prim-sign r0 r1 shape-fn
                      tp-t0 tp-t1 tp-z out-ref0 out-ref1 i)
        shape
        (gdst-ext2-∇ tp-t0 tp-t1 tp-z)
-       (gs-ext2-∇ signature r0 r1 tp-t0 tp-t1 tp-z i)))))
+       (gs-ext2-∇ prim-sign r0 r1 tp-t0 tp-t1 tp-z i)))))
 
 (define tpmake-reshape
   (λ (tp shape)

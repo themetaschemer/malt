@@ -1,6 +1,6 @@
 #lang racket
-(require "../../flat-tensors/ext-impl.rkt")
-(require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
+(require "../../accelerated-tensors/ext-impl.rkt")
+(require (prefix-in acc: "../../accelerated-tensors/tensors.rkt"))
 
 (require "c0-ast.rkt")
 (require (only-in "c1-racket-runtime.rkt" ext2-∇-result))
@@ -93,9 +93,9 @@ instructions refering to the same gensym variable
 (define tensor-inner-flat
   (λ (lst)
     (cond
-     [(andmap number? lst) (apply flat:tensor lst)]
+     [(andmap number? lst) (apply acc:tensor lst)]
      [(andmap tpromise-flat? lst)
-      (apply flat:tensor
+      (apply acc:tensor
              (for/list ((tp-flat lst))
                (car (unbox (tpromise-dst tp-flat)))))]
      [else lst])))
@@ -147,11 +147,11 @@ instructions refering to the same gensym variable
   (lambda (v)
     (cond
       [(tpromise? v) (tpromise-shape v)]
-      [else (flat:shape v)])))
+      [else (acc:shape v)])))
 
 (define build-tpromise
   (λ (s f)
-    (tpmake-flat (flat:build-tensor s f))))
+    (tpmake-flat (acc:build-tensor s f))))
 
 (define tp-trefs
   (λ (tp b)
@@ -173,12 +173,12 @@ instructions refering to the same gensym variable
 ;; definition of ext1 and ext2 functions in B-prims.rkt.
 (define tp-ext1-ρ
   (let ((id -1))
-    (λ (f m
-          [shape-fn scalar-shape]
-          [expects-prealloc? #f]
-          [prim-sign (begin
-                       (set! id (add1 id))
-                       (string-append "re1" (~r id #:base 16)))])
+    (λ (f f-acc m
+        [shape-fn scalar-shape]
+        [expects-prealloc? #f]
+        [prim-sign (begin
+                     (set! id (add1 id))
+                     (string-append "re1" (~r id #:base 16)))])
       (λ (tp)
         (let* ((in-shape (tp-shape tp))
                (base-shape (min-shape m in-shape))
@@ -188,17 +188,18 @@ instructions refering to the same gensym variable
             [(scalar? tp) (f tp)]
             [(and (tpromise? tp)
                   (null? (tpromise-shape tp)))
-             (tpmake-ext1-ρ-scalar f prim-sign tp out-shape)]
+             (tpmake-ext1-ρ-scalar f f-acc prim-sign tp out-shape)]
             [expects-prealloc?
-             (tpmake-ext1-ρ f prim-sign m shape-fn tp out-shape)]
+             (tpmake-ext1-ρ f f-acc prim-sign m shape-fn tp out-shape)]
             [else
-             (let ((flat-f (functional->preallocated-1-ρ f base-shape shape-fn-out)))
-               (tpmake-ext1-ρ flat-f prim-sign m shape-fn tp out-shape))]))))))
+             (let ((flat-f (functional->preallocated-1-ρ f base-shape shape-fn-out))
+                   (flat-f-acc (functional->preallocated-1-ρ-acc f-acc base-shape shape-fn-out)))
+               (tpmake-ext1-ρ flat-f flat-f-acc prim-sign m shape-fn tp out-shape))]))))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-ρ
   (let ((id -1))
-    (λ (f m n
+    (λ (f f-acc m n
         [shape-fn scalar-shape]
         [expects-prealloc? #f]
         [prim-sign (begin
@@ -216,19 +217,21 @@ instructions refering to the same gensym variable
             [(and (tpromise? tp-t) (tpromise? tp-u)
                   (null? (tpromise-shape tp-t))
                   (null? (tpromise-shape tp-u)))
-             (tpmake-ext2-ρ-scalar f prim-sign tp-t tp-u sf-out)]
+             (tpmake-ext2-ρ-scalar f f-acc prim-sign tp-t tp-u sf-out)]
             [expects-prealloc?
              (tpmake-ext2-ρ
               tp-t tp-u
-              f prim-sign m n shape-fn
+              f f-acc prim-sign m n shape-fn
               (ext2-shapes s0 s1 m n sf-out
                            (λ (s-out . _) s-out)))]
             [else
              (let ((flat-f (functional->preallocated-2-ρ
-                            f sf0 sf1 sf-out)))
+                            f sf0 sf1 sf-out))
+                   (flat-f-acc (functional->preallocated-2-ρ-acc
+                                f-acc sf0 sf1 sf-out)))
                (tpmake-ext2-ρ
                 tp-t tp-u
-                flat-f prim-sign m n shape-fn
+                flat-f flat-f-acc prim-sign m n shape-fn
                 (ext2-shapes s0 s1 m n sf-out
                              (λ (s-out . _) s-out))))]))))))
 
@@ -238,7 +241,7 @@ instructions refering to the same gensym variable
 ;; See comment for tp-ext1-ρ
 (define tp-ext1-∇
   (let ((id -1))
-    (λ (f m
+    (λ (f f-acc m
         [shape-fn scalar-shape]
         [expects-prealloc? #f]
         [prim-sign (begin
@@ -249,58 +252,63 @@ instructions refering to the same gensym variable
         (cond
           ((number? tp) (f tp zp))
           (expects-prealloc?
-           (tpmake-ext1-∇ tp zp f prim-sign m shape-fn (tp-shape tp)))
+           (tpmake-ext1-∇ tp zp f f-acc prim-sign m shape-fn (tp-shape tp)))
           (else
            (let* ((in-shape (tpromise-shape tp))
                   (base-shape (min-shape m in-shape))
                   (out-shape (shape-fn base-shape))
-                  (flat-f (functional->preallocated-1-∇ f base-shape out-shape)))
-             (tpmake-ext1-∇ tp zp flat-f prim-sign m shape-fn (tp-shape tp)))))))))
+                  (flat-f (functional->preallocated-1-∇ f base-shape out-shape))
+                  (flat-f-acc (functional->preallocated-1-∇-acc f-acc base-shape out-shape)))
+             (tpmake-ext1-∇ tp zp flat-f flat-f-acc prim-sign m shape-fn (tp-shape tp)))))))))
 
 ;; See comment for tp-ext1-ρ
 (define tp-ext2-∇
   (let ((id -1))
-    (λ (f m n
+    (λ (f f-acc m n
         [shape-fn scalar-shape]
         [expects-prealloc? #f]
         [prim-sign (begin
                      (set! id (add1 id))
                      (string-append "ne2" (~r id #:base 16)))])
       (let ((tp-f
-             (λ (f tp-t tp-u tp-z)
-               (tp-d-ext2^ f prim-sign m n shape-fn
+             (λ (f f-acc tp-t tp-u tp-z)
+               (tp-d-ext2^ f f-acc prim-sign m n shape-fn
                            tp-t tp-u tp-z))))
         (λ (tp-t tp-u tp-z)
           (cond
             (expects-prealloc?
-             (tp-f f tp-t tp-u tp-z))
+             (tp-f f f-acc tp-t tp-u tp-z))
             [else (let* ((t-shape (min-shape m (tp-shape tp-t)))
                          (u-shape (min-shape n (tp-shape tp-u)))
                          (out-shape (shape-fn t-shape u-shape))
                          (flat-f (functional->preallocated-2-∇
-                                  f t-shape u-shape out-shape)))
-                    (tp-f flat-f tp-t tp-u tp-z))]))))))
+                                  f t-shape u-shape out-shape))
+                         (flat-f-acc (functional->preallocated-2-∇-acc
+                                  f-acc t-shape u-shape out-shape)))
+                    (tp-f flat-f flat-f-acc tp-t tp-u tp-z))]))))))
 
 (define tp-d-ext2^
-  (λ (fᵈ sign r0 r1 shape-fn tp-t0 tp-t1 tp-z)
+  (λ (fᵈ fᵈ-acc sign r0 r1 shape-fn tp-t0 tp-t1 tp-z)
     (let* ((out-ref0 (ext2-∇-result (tcomp-ds-ref #f)))
            (out-ref1 (ext2-∇-result (tcomp-ds-ref #f))))
       (values
-       (tpmake-ext2-∇ fᵈ sign r0 r1 shape-fn
+       (tpmake-ext2-∇ fᵈ fᵈ-acc sign r0 r1 shape-fn
                       tp-t0 tp-t1 tp-z out-ref0 out-ref1 0 (tp-shape tp-t0))
-       (tpmake-ext2-∇ fᵈ sign r0 r1 shape-fn
+       (tpmake-ext2-∇ fᵈ fᵈ-acc sign r0 r1 shape-fn
                       tp-t0 tp-t1 tp-z out-ref0 out-ref1 1 (tp-shape tp-t1))))))
 
 (define tp-rank
   (λ (tp)
-    (flat:len (tp-shape tp))))
+    (acc:len (tp-shape tp))))
 
 (define tp-reshape
   (λ (s tp)
     (cond
-      ((= (flat:size-of s) (flat:size-of (tpromise-shape tp)))
+      ((and (tpromise? tp) (= (acc:size-of s) (acc:size-of (tpromise-shape tp))))
        (tpmake-reshape tp s))
-      (else (error 'shape-error "Cannot reshape ~a to ~a~%" (tpromise-shape tp) s)))))
+      [(and (acc:flat? tp) (= (acc:size-of s) (acc:size-of (acc:shape tp))))
+       (acc:reshape s tp)]
+      (else (error 'shape-error "Cannot reshape ~a to ~a~%" tp s)))))
 
 (define tensor?
   (lambda (tp)
@@ -311,9 +319,9 @@ instructions refering to the same gensym variable
 (provide start-vector-manager vector-manager-report)
 
 (provide (rename-out
-          (flat:len len)
-          (flat:ref ref)
-          (flat:refr refr)))
+          (acc:len len)
+          (acc:ref ref)
+          (acc:refr refr)))
 (provide tensor
          tpromise?
          (rename-out
@@ -335,4 +343,4 @@ instructions refering to the same gensym variable
           (tp-rank rank)
           (tp-shape shape)
           (tp-reshape reshape)
-          (flat:size-of size-of)))
+          (acc:size-of size-of)))

@@ -1,5 +1,7 @@
 #lang racket
 
+(require string-interpolation)
+(require "../../accelerated-tensors/ext-impl.rkt")
 (require (rename-in (only-in "../tensors.rkt" ext2-ρ tref tlen shape len ref)
                     (shape shape-ρ)))
 (require (only-in "../autodiff.rkt" prim2 ext2 shape))
@@ -16,9 +18,24 @@
     (for ([i (in-range 0 stride-out)])
       (cond
         ((< i stride0)
-         (vector-set! v-out (+ i-out i) (vector-ref v0 (+ i0 i))))
+         (vset! v-out (+ i-out i) (vref v0 (+ i0 i))))
         (else
-         (vector-set! v-out (+ i-out i) (vector-ref v1 (+ i1 (- i stride0)))))))))
+         (vset! v-out (+ i-out i) (vref v1 (+ i1 (- i stride0)))))))))
+
+(define concat-base-ρ-acc
+  (λ (v0 i0 stride0
+      v1 i1 stride1
+      v-out i-out stride-out)
+  #<<EOF
+    for(int i=0; i < @{stride-out}; i++) {
+        if (i < @{stride0}) {
+            @{v-out}[i+@{i-out}] = @{v0}[i+@{i0}];
+        } else {
+            @{v-out}[i+@{i-out}] = @{v1}[(i-@{stride0})+@{i1}];
+        }
+    }
+EOF
+))
 
 (define concat-base-∇
   (λ (g0 g1 v0 i0 stride0
@@ -27,16 +44,34 @@
     (for ([i (in-range 0 stride-z)])
       (cond
         ((< i stride0)
-         (vector-set! g0 (+ i0 i)
-           (+ (vector-ref g0 (+ i0 i))
-              (vector-ref vz (+ iz i)))))
+         (vset! g0 (+ i0 i)
+           (+ (vref g0 (+ i0 i))
+              (vref vz (+ iz i)))))
         (else
-         (vector-set! g1 (+ i1 (- i stride0))
-           (+ (vector-ref g1 (+ i1 (- i stride0)))
-              (vector-ref vz (+ iz i)))))))))
+         (vset! g1 (+ i1 (- i stride0))
+           (+ (vref g1 (+ i1 (- i stride0)))
+              (vref vz (+ iz i)))))))))
+
+(define concat-base-∇-acc
+  (λ (g v0 i0 stride0
+      v1 i1 stride1
+      vz iz stride-z)
+    (values
+   #<<EOF
+    for(int i=0; i < @{stride0}; i++) {
+        @{g}[i+@{i0}] += @{vz}[i+@{iz}];
+    }
+EOF
+
+   #<<EOF
+    for(int i=@{stride0}; i < @{stride-z}; i++) {
+        @{g}[i-@{stride0}+@{i1}] += @{vz}[i+@{iz}];
+    }
+EOF
+   )))
 
 (define concat-base
-  (prim2 concat-base-ρ concat-base-∇ concat-shape #t))
+  (prim2 concat-base-ρ concat-base-ρ-acc concat-base-∇ concat-base-∇-acc concat-shape #t))
 
 (define d-concat-n
   (λ (n)
@@ -52,7 +87,7 @@
       (let ((st (shape-ρ t))
             (su (shape-ρ u)))
         (ensure-compatible-shapes n st su)
-        ((ext2 concat-base-ρ n n concat-shape) t u)))))
+        ((ext2-ρ concat-base-ρ concat-base-ρ-acc n n concat-shape #t) t u)))))
 
 (define ensure-compatible-shapes
   (λ (n st su)

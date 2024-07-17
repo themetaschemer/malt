@@ -1,6 +1,6 @@
 #lang racket
-(require "../../flat-tensors/ext-impl.rkt")
-(require (prefix-in flat: "../../flat-tensors/tensors.rkt"))
+(require "../../accelerated-tensors/ext-impl.rkt")
+(require (prefix-in acc: "../../accelerated-tensors/tensors.rkt"))
 (require "c0-ast.rkt")
 (require (only-in "c3-compiler.rkt"
                   compiler-cache
@@ -42,11 +42,10 @@
     (cond
       [(and (tpromise? tp) (null? (tpromise-shape tp)))
        (tp-scalarize (↓ tp))]
-      [(and (flat:flat? tp) (null? (flat:flat-shape tp)))
-       (vector-ref (flat:flat-store tp) 0)]
+      [(and (acc:flat? tp) (null? (acc:flat-shape tp)))
+       (vector-ref (acc:flat-store tp) 0)]
       [else tp])))
 
-;; TODO: these force functions will be moved to the openCL runtime
 (define force*1
   (λ (t f)
     (f (↓ t))))

@@ -40,10 +40,10 @@
                         (tensor 23 24))))
 
   (define corr-ρ
-    (ext2-ρ (correlate-3-1-ρ 12 6 2) 3 1 correlate-shape #t))
+    (ext2-ρ (correlate-3-1-ρ 12 6 2) (correlate-3-1-ρ-acc 12 6 2) 3 1 correlate-shape #t))
 
   (define corr-∇
-    (ext2-∇ (correlate-3-1-∇ 12 6 2) 3 1 correlate-shape #t))
+    (ext2-∇ (correlate-3-1-∇ 12 6 2) (correlate-3-1-∇-acc 12 6 2) 3 1 correlate-shape #t))
 
   (check-tensor-equal? (corr-ρ bank signal)
                        ;; Should be of size nb

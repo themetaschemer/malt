@@ -2,8 +2,8 @@
 
 (require "c0-ast.rkt")
 (require (only-in "c1-racket-runtime.rkt"
-                  runtime flat? flat:build-tensor flat:list->tensor
-                  set-ext2-∇-result-res! flat:tref rt:trefs ext2-∇-result-res
+                  runtime flat? acc:build-tensor acc:list->tensor
+                  set-ext2-∇-result-res! acc:tref rt:trefs ext2-∇-result-res
                   ext2-∇-forcer! scalarize flat-ext1-∇ ensure-flat flat-ext2-ρ
                   flat flat-store flat-offset flat-ext1-ρ data-segment
                   data-segment-ref))
@@ -18,14 +18,14 @@
                   ((tpromise? arg) (interp-tpromise arg env))
                   ((number? arg) arg)
                   (else (error 'interp-list->tensor "Unexpected: ~a" arg))))))
-         (flat:list->tensor eval-list))]
+         (acc:list->tensor eval-list))]
       [(tcomp-tref tp (and i (tcomp-ds-ref _)))
-       (flat:tref (interp-tpromise tp env)
+       (acc:tref (interp-tpromise tp env)
                   (interp-tcomp i env))]
       [(tcomp-trefs tp (and b (tcomp-ds-ref _)))
        (rt:trefs (interp-tpromise tp env)
                  (interp-tcomp b env))]
-      [(tcomp-ext2-∇ fᵈ _ r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+      [(tcomp-ext2-∇ fᵈ fᵈ-acc f-sign r0 r1 shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
        (let ((t0-instrs (interp-tpromise tp-t0 env))
              (t1-instrs (interp-tpromise tp-t1 env))
              (z-instrs (interp-tpromise tp-z env)))
@@ -44,28 +44,28 @@
                 (v (data-segment-ref index)))
            (cond
              ((eqv? v 'uncalculated)
-              (ext2-∇-forcer! fᵈ r0 r1 shape-fn
+              (ext2-∇-forcer! fᵈ fᵈ-acc f-sign r0 r1 shape-fn
                               t0-instrs t1-instrs
                               z-instrs out-idx0 out-idx1)
               (data-segment-ref index))
              (else v))))]
-      [(tcomp-ext1-∇ tp zp f _ m shape-fn)
+      [(tcomp-ext1-∇ tp zp f f-acc f-sign m shape-fn)
        (scalarize
-        (flat-ext1-∇ f m shape-fn
+        (flat-ext1-∇ f f-acc m shape-fn f-sign
                      (ensure-flat (interp-tpromise tp env))
                      (ensure-flat (interp-tpromise zp env))))]
-      [(tcomp-ext2-ρ-scalar f _ tp-t tp-u)
+      [(tcomp-ext2-ρ-scalar f f-acc _ tp-t tp-u)
        (f (interp-tpromise tp-t env) (interp-tpromise tp-u env))]
-      [(tcomp-ext2-ρ tp-t tp-u f _ m n shape-fn)
+      [(tcomp-ext2-ρ tp-t tp-u f f-acc f-sign m n shape-fn)
        (scalarize
-        (flat-ext2-ρ f m n shape-fn
+        (flat-ext2-ρ f f-acc m n shape-fn f-sign
                      (ensure-flat (interp-tpromise tp-t env))
                      (ensure-flat (interp-tpromise tp-u env))))]
-      [(tcomp-ext1-ρ-scalar f _ tp)
+      [(tcomp-ext1-ρ-scalar f f-acc _ tp)
        (f (interp-tpromise tp env))]
-      [(tcomp-ext1-ρ f _ m shape-fn tp)
+      [(tcomp-ext1-ρ f f-acc f-sign m shape-fn tp)
        (scalarize
-        (flat-ext1-ρ f m shape-fn
+        (flat-ext1-ρ f f-acc m shape-fn f-sign
                      (ensure-flat (interp-tpromise tp env))))]
       [(tcomp-reshape s tp)
        (let ([interp-tp (interp-tpromise tp env)])

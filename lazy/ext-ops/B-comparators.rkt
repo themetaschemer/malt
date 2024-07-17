@@ -1,5 +1,6 @@
 #lang racket
 
+(require string-interpolation)
 (require "../autodiff.rkt")
 
 ;;----------------------------
@@ -24,7 +25,7 @@
   (comparator >))
 
 (define >=-0-0
-  (comparator >=))
+  (comparator >))
 
 ;;----------------------------
 ;; Tensorized comparators
@@ -37,6 +38,11 @@
         ((f (ρ da) (ρ db)) 1.0)
         (else 0.0)))))
 
+(define comparator-ρ-acc
+  (λ (f)
+    (λ (a b)
+      "@{a} @{f} @{b}")))
+
 (define comparator-∇
   (λ (f)
     (λ (da db z)
@@ -44,40 +50,48 @@
         ((f (ρ da) (ρ db)) (values z z))
         (else (values 0.0 0.0))))))
 
+(define comparator-∇-acc
+  (λ (f)
+    (λ (a b z)
+      (let ((bool "@{a} @{f} @{b}"))
+        (values "@{bool}*@{z}" "@{bool}*@{z}")))))
+
 (define comparator-shape
   (λ (f)
     (λ (sa sb)
       sa)))
 
 (define comparator-prim
-  (λ (f)
-    (prim2 (comparator-ρ f) (comparator-∇ f) (comparator-shape f))))
+  (λ (f f-acc)
+    (prim2 (comparator-ρ f) (comparator-ρ-acc f-acc)
+           (comparator-∇ f) (comparator-∇-acc f-acc)
+           (comparator-shape f))))
 
 (define extended-comparator
-  (λ (f)
-    (ext2 (comparator-prim f) 0 0)))
+  (λ (f f-acc)
+    (ext2 (comparator-prim f f-acc) 0 0)))
 
 (define =-1
-  (extended-comparator =))
+  (extended-comparator = "=="))
 
 (define <-1
-  (extended-comparator <))
+  (extended-comparator < "<"))
 
 (define >-1
-  (extended-comparator >))
+  (extended-comparator > ">"))
 
 (define <=-1
-  (extended-comparator <=))
+  (extended-comparator <= "<="))
 
 (define >=-1
-  (extended-comparator >=))
+  (extended-comparator >= ">="))
 
 (define !=
   (λ (a b)
     (not (= a b))))
 
 (define !=-1
-  (extended-comparator !=))
+  (extended-comparator != "!="))
 
 (include "test/test-B-comparators.rkt")
 
