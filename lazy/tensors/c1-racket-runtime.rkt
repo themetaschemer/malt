@@ -55,6 +55,33 @@
            (when out-idx1
              (data-segment-set! out-idx1 (scalarize (flat s1 g1 0))))))))))
 
+(define prim2-∇-forcer!
+  (λ (fᵈ fᵈ-acc fᵈ-sign shape-fn t0 t1 z out-idx0 out-idx1)
+    (let* ((in-shape-a (flat-shape t0))
+           (in-size-a (size-of in-shape-a))
+           (in-shape-b (flat-shape t1))
+           (in-size-b (size-of in-shape-b))
+           (out-shape (shape-fn in-shape-a in-shape-b))
+           (out-size (size-of out-shape)))
+      (let ((g0 (new-vec in-size-a 0.0))
+            (g1 (new-vec in-size-b 0.0)))
+        (cond
+          ((null? out-shape)
+           (let ((v-z (new-vec 1 z)))
+             (fᵈ g0 g1
+               (flat-store t0) (flat-offset t0) in-size-a
+               (flat-store t1) (flat-offset t1) in-size-b
+               v-z 0 1)))
+          (else
+           (fᵈ g0 g1
+             (flat-store t0) (flat-offset t0) in-size-a
+             (flat-store t1) (flat-offset t1) in-size-b
+             (flat-store z) (flat-offset z) out-size)))
+        (when out-idx0
+             (data-segment-set! out-idx0 (scalarize (flat in-shape-a g0 0))))
+        (when out-idx1
+          (data-segment-set! out-idx1 (scalarize (flat in-shape-b g1 0))))))))
+
 (define rt:trefs
   (λ (ft b)
     (cond
@@ -79,4 +106,6 @@
 (provide runtime flat? acc:build-tensor acc:list->tensor
          acc:tref rt:trefs (struct-out ext2-∇-result) set-ext2-∇-result-res!
          ext2-∇-forcer! scalarize flat-ext1-∇ ensure-flat flat-ext2-ρ
-         flat flat-store flat-offset flat-ext1-ρ data-segment data-segment-ref)
+         flat flat-store flat-offset flat-ext1-ρ data-segment data-segment-ref
+         apply-flat-ρ-fn-1 apply-flat-ρ-fn-2 apply-flat-∇-fn-1 apply-flat-∇-fn-2
+         prim2-∇-forcer!)

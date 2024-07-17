@@ -99,6 +99,31 @@
                [(tcomp-ext1-ρ f f-acc sign m shape-fn tp)
                 (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
                   (values (tcomp-ext1-ρ f f-acc sign m shape-fn tp^) ref^))]
+               [(tcomp-prim1-ρ f f-acc sign shape-fn tp)
+                (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
+                  (values (tcomp-prim1-ρ f f-acc sign shape-fn tp^) ref^))]
+               [(tcomp-prim2-ρ f f-acc sign shape-fn tp-t tp-u)
+                (let*-values (((tp-t^ ref^) (gdr-tpromise tp-t ref memo))
+                              ((tp-u^ ref^^) (gdr-tpromise tp-u ref^ memo)))
+                  (values (tcomp-prim2-ρ f f-acc sign shape-fn tp-t^ tp-u^) ref^^))]
+               [(tcomp-prim1-∇ f f-acc sign shape-fn tp zp)
+                (let*-values (((tp^ ref^) (gdr-tpromise tp ref memo))
+                              ((zp^ ref^^) (gdr-tpromise zp ref^ memo)))
+                  (values (tcomp-prim1-∇ f f-acc sign shape-fn tp^ zp^) ref^^))]
+               [(tcomp-prim2-∇ fᵈ fᵈ-acc f-sign shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+                (let*-values (((tp-t0^ ref^) (gdr-tpromise tp-t0 ref memo))
+                              ((tp-t1^ ref^^) (gdr-tpromise tp-t1 ref^ memo))
+                              ((tp-z^ ref^^^) (gdr-tpromise tp-z ref^^ memo)))
+                  (cond
+                    ((and (eqv? i 0)
+                          (not (tcomp-ds-ref-index (ext2-∇-result-res out0))))
+                     (set-ext2-∇-result-res! out0 (tcomp-ds-ref ref^^^)))
+                    ((and (eqv? i 1)
+                          (not (tcomp-ds-ref-index (ext2-∇-result-res out1))))
+                     (set-ext2-∇-result-res! out1 (tcomp-ds-ref ref^^^))))
+                  (values (tcomp-prim2-∇ fᵈ fᵈ-acc f-sign shape-fn tp-t0^ tp-t1^ tp-z^
+                                        out0 out1 i)
+                          (add1 ref^^^)))]
                [(tcomp-reshape s tp)
                 (let-values (((tp^ ref^) (gdr-tpromise tp ref memo)))
                   (values (tcomp-reshape s tp^) ref^))]
@@ -188,6 +213,18 @@
                  (cr-tpromise tp counter^ uid^)]
                 [(tcomp-ext1-ρ f _ sign m shape-fn tp)
                  (cr-tpromise tp counter^ uid^)]
+                [(tcomp-prim1-ρ f f-acc sign shape-fn tp)
+                 (cr-tpromise tp counter^ uid^)]
+                [(tcomp-prim2-ρ f f-acc sign shape-fn tp-t tp-u)
+                 (let-values (((counter-1 uid-1) (cr-tpromise tp-t counter^ uid^)))
+                   (cr-tpromise tp-u counter-1 uid-1))]
+                [(tcomp-prim1-∇ f f-acc sign shape-fn tp zp)
+                 (let-values (((counter-1 uid-1) (cr-tpromise tp counter^ uid^)))
+                   (cr-tpromise zp counter-1 uid-1))]
+                [(tcomp-prim2-∇ fᵈ fᵈ-acc f-sign shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+                 (let*-values (((counter-1 uid-1) (cr-tpromise tp-t0 counter^ uid^))
+                               ((counter-2 uid-2) (cr-tpromise tp-z counter-1 uid-1)))
+                   (cr-tpromise tp-t1 counter-2 uid-2))]
                 [(tcomp-reshape s tp)
                  (cr-tpromise tp counter^ uid^)]
                 [(tcomp-ds-ref index) (values counter^ uid^)]
@@ -316,6 +353,46 @@
           (ecs-tpromise tp counter)
           (λ (instrs)
             (inj-ecs-tcomp (tcomp-ext1-ρ f f-acc sign m shape-fn instrs) tc-counter-data)))]
+        [(tcomp-prim1-ρ f f-acc sign shape-fn tp)
+         (->ecs
+          (ecs-tpromise tp counter)
+          (λ (instrs)
+            (inj-ecs-tcomp (tcomp-prim1-ρ f f-acc sign shape-fn instrs) tc-counter-data)))]
+        [(tcomp-prim2-ρ f f-acc sign shape-fn tp-t tp-u)
+         (->ecs
+          (ecs-tpromise tp-t counter)
+          (λ (t-instrs)
+            (->ecs
+             (ecs-tpromise tp-u counter)
+             (λ (u-instrs)
+               (inj-ecs-tcomp
+                (tcomp-prim2-ρ f f-acc sign shape-fn t-instrs u-instrs)
+                tc-counter-data)))))]
+        [(tcomp-prim1-∇ f f-acc sign shape-fn tp zp)
+         (->ecs
+          (ecs-tpromise tp counter)
+          (λ (t-instrs)
+            (->ecs
+             (ecs-tpromise zp counter)
+             (λ (z-instrs)
+               (inj-ecs-tcomp
+                (tcomp-prim1-∇ f f-acc sign shape-fn t-instrs z-instrs)
+                tc-counter-data)))))]
+        [(tcomp-prim2-∇ fᵈ fᵈ-acc f-sign shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+         (->ecs
+          (ecs-tpromise tp-t0 counter)
+          (λ (t0-instrs)
+            (->ecs
+             (ecs-tpromise tp-t1 counter)
+             (λ (t1-instrs)
+               (->ecs
+                (ecs-tpromise tp-z counter)
+                (λ (z-instrs)
+                  (inj-ecs-tcomp
+                   (tcomp-prim2-∇ fᵈ fᵈ-acc f-sign shape-fn
+                                 t0-instrs t1-instrs z-instrs
+                                 out0 out1 i)
+                   tc-counter-data)))))))]
         [(tcomp-reshape s tp)
          (->ecs
           (ecs-tpromise tp counter)
@@ -438,6 +515,33 @@
          `(scalarize
            (flat-ext1-ρ ,f ,f-acc ,m ,shape-fn ,sign
                         (ensure-flat ,instrs))))]
+      [(tcomp-prim1-ρ f f-acc sign shape-fn tp)
+       (let ((instrs (gr-tpromise tp)))
+         `(apply-flat-ρ-fn-1 ,f ,instrs ,shape-fn))]
+      [(tcomp-prim2-ρ f f-acc sign shape-fn tp-t tp-u)
+       (let ((t-instrs (gr-tpromise tp-t))
+             (u-instrs (gr-tpromise tp-u)))
+         `(apply-flat-ρ-fn-2 ,f ,t-instrs ,u-instrs ,shape-fn))]
+      [(tcomp-prim1-∇ f f-acc sign shape-fn tp zp)
+       (let ((t-instrs (gr-tpromise tp))
+             (z-instrs (gr-tpromise zp)))
+         `(apply-flat-∇-fn-1 ,f ,t-instrs (scalarize ,z-instrs) ,shape-fn))]
+      [(tcomp-prim2-∇ fᵈ fᵈ-acc f-sign shape-fn tp-t0 tp-t1 tp-z out0 out1 i)
+       (let ((t0-instrs (gr-tpromise tp-t0))
+             (t1-instrs (gr-tpromise tp-t1))
+             (z-instrs (gr-tpromise tp-z))
+             (out-idx0 (tcomp-ds-ref-index (ext2-∇-result-res out0)))
+             (out-idx1 (tcomp-ds-ref-index (ext2-∇-result-res out1))))
+         (let ((index (if (zero? i) out-idx0 out-idx1)))
+           `(let* ([index ,index]
+                   [v (data-segment-ref index)])
+              (cond
+                ((eqv? v 'uncalculated)
+                 (prim2-∇-forcer! ,fᵈ ,fᵈ-acc ,f-sign ,shape-fn
+                                  ,t0-instrs ,t1-instrs
+                                  ,z-instrs ,out-idx0 ,out-idx1)
+                 (data-segment-ref index))
+                (else v)))))]
       [(tcomp-reshape s tp)
        (let ((instrs (gr-tpromise tp)))
          `(flat ',s

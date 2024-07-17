@@ -2,6 +2,8 @@
   (require (only-in "../tensors.rkt" tensor))
 
   (let ((y (tensor 0.0 0.0 1.0 0.0)))
+    (check-ρ-∇ (argmax-1 y) 2.0
+               (list (tensor 0.0 0.0 0.0 0.0)))
     (check-ρ-∇ (d-argmax y) 2.0
                (list (tensor 0.0 0.0 0.0 0.0))))
 
