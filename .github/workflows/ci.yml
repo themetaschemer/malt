@@ -3,7 +3,8 @@ name: CI
 jobs:
   build:
     name: "Build on Racket '${{ matrix.racket-version }}' (${{ matrix.racket-variant }})"
-    runs-on: ubuntu-latest
+    #runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         racket-version: ["stable", "current"]
