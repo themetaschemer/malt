@@ -18,7 +18,7 @@ jobs:
       #    variant: ${{ matrix.racket-variant }}
       #    version: ${{ matrix.racket-version }}
       - name: Installing malt and its dependencies
-        run: raco pkg install --no-docs --auto --name malt
+        run: raco pkg install --no-docs --auto --name malt --skip-installed
       - name: Compiling malt and building its docs
         run: raco setup --check-pkg-deps --unused-pkg-deps malt
       - name: Testing malt
