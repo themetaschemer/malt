@@ -2,23 +2,9 @@ on: [push, pull_request]
 name: CI
 jobs:
   build:
-    name: "Build on Racket '${{ matrix.racket-version }}' (${{ matrix.racket-variant }})"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        racket-version: ["stable", "current"]
-        racket-variant: ["BC", "CS"]
+    name: "Build on Racket CS"
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-      - uses: Bogdanp/setup-racket@v1.9.1
-        with:
-          architecture: x64
-          distribution: full
-          variant: ${{ matrix.racket-variant }}
-          version: ${{ matrix.racket-version }}
-      - name: Installing malt and its dependencies
-        run: raco pkg install --no-docs --auto --name malt
-      - name: Compiling malt and building its docs
-        run: raco setup --check-pkg-deps --unused-pkg-deps malt
       - name: Testing malt
-        run: raco test -x -p malt
+        run: make
