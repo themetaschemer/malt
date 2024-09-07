@@ -2,13 +2,8 @@ on: [push, pull_request]
 name: CI
 jobs:
   build:
-    name: "Build on Racket '${{ matrix.racket-version }}' (${{ matrix.racket-variant }})"
-    #runs-on: ubuntu-latest
+    name: "Build on Racket CS"
     runs-on: self-hosted
-    strategy:
-      matrix:
-        racket-version: ["stable", "current"]
-        racket-variant: ["BC", "CS"]
     steps:
       - uses: actions/checkout@v3
       - name: Testing malt
