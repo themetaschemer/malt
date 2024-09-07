@@ -11,12 +11,12 @@ jobs:
         racket-variant: ["BC", "CS"]
     steps:
       - uses: actions/checkout@v3
-      - uses: Bogdanp/setup-racket@v1.9.1
-        with:
-          architecture: x64
-          distribution: full
-          variant: ${{ matrix.racket-variant }}
-          version: ${{ matrix.racket-version }}
+      #- uses: Bogdanp/setup-racket@v1.9.1
+      #  with:
+      #    architecture: x64
+      #    distribution: full
+      #    variant: ${{ matrix.racket-variant }}
+      #    version: ${{ matrix.racket-version }}
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
