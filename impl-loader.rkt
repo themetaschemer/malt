@@ -22,7 +22,7 @@
 
 (define init-settings
   (λ ()
-    (settings (make-hash (read-preferences "local.cfg")))))
+    (settings (make-hash (read-preferences (or (getenv "MALT_PREFERENCES") "local.cfg"))))))
 
 ;;--------------------------------
 ;; Config params so far
@@ -32,11 +32,21 @@
   (λ ()
     (car (dict-ref (settings) 'tensor-implementation))))
 
+(define accelerate?
+  (λ ()
+    (car (dict-ref (settings) 'accelerate?))))
+
+(define debug-kernel?
+  (λ ()
+    (car (dict-ref (settings) 'debug-kernel?))))
+
 ;; Default settings
 (define default-preferences
-  `((tensor-implementation learner)))
+  `((tensor-implementation learner)
+    (accelerate? #t)
+    (debug-kernel? #f)))
 
 (when (not (settings))
   (init-settings))
 
-(provide tensor-implementation)
+(provide tensor-implementation accelerate? debug-kernel?)
