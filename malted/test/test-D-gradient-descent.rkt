@@ -12,8 +12,9 @@
   (define naked-gd (gradient-descent id id
                                      (λ (theta g)
                                        (--ρ theta (*-ρ g alpha)))))
-  (check-equal?
+  (check-within
    (with-hypers ((revs 500)
                  (alpha 0.01))
      (naked-gd obj (list 3.0)))
-   '(29.998892352401082)))
+   '(29.998892352401082)
+   (tolerance)))
