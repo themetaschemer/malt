@@ -9,7 +9,7 @@ jobs:
         racket-version: ["stable", "current"]
         racket-variant: ["BC", "CS"]
     env:
-      LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libOpenCL.so
+      LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/libOpenCL.so
     steps:
       - uses: actions/checkout@v3
       - name: Install Intel OpenCL Runtime
