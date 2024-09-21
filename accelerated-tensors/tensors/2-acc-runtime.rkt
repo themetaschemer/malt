@@ -51,7 +51,7 @@
     (lambda ()
       (or devices
           (begin
-            (set! devices (clGetDeviceIDs:vector (platform) 'CL_DEVICE_TYPE_GPU))
+            (set! devices (clGetDeviceIDs:vector (platform) (opencl-device-type)))
             devices)))))
 (define device
   (let ([device #f])

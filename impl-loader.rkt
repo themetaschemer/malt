@@ -28,25 +28,40 @@
 ;; Config params so far
 ;;--------------------------------
 
+(define get-param
+  (λ (param)
+    (match (car (dict-ref (settings) param))
+      [`(getenv ,name) (getenv name)]
+      [x x])))
+
 (define tensor-implementation
   (λ ()
-    (car (dict-ref (settings) 'tensor-implementation))))
+    (get-param 'tensor-implementation)))
 
 (define accelerate?
   (λ ()
-    (car (dict-ref (settings) 'accelerate?))))
+    (get-param 'accelerate?)))
 
 (define debug-kernel?
   (λ ()
-    (car (dict-ref (settings) 'debug-kernel?))))
+    (get-param 'debug-kernel?)))
+
+(define opencl-device-type
+  (λ ()
+    (match (get-param 'opencl-device-type)
+      ["" 'CL_DEVICE_TYPE_DEFAULT]
+      [(? string? s) (string->symbol s)]
+      [(? symbol? x) x]
+      [e (error 'opencl-device-type:err "Invalid paramater: ~a" e)])))
 
 ;; Default settings
 (define default-preferences
   `((tensor-implementation learner)
     (accelerate? #t)
-    (debug-kernel? #f)))
+    (debug-kernel? #f)
+    (opencl-device-type (getenv "CL_DEVICE_TYPE"))))
 
 (when (not (settings))
   (init-settings))
 
-(provide tensor-implementation accelerate? debug-kernel?)
+(provide tensor-implementation accelerate? debug-kernel? opencl-device-type)
