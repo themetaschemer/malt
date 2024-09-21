@@ -16,8 +16,20 @@ jobs:
           distribution: full
           variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
-      - name: Install Intel OpenCL
-        run: sudo apt-get install -y xserver-xorg-video-intel ocl-icd-opencl-dev
+      - name: Install Intel OpenCL Runtime
+        run: |
+          # download the key to system keyring
+          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+          | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+
+          # add signed entry to apt sources and configure the APT client to use Intel repository:
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+          sudo apt update
+
+          sudo apt-get install -y intel-oneapi-runtime-opencl
+      - name: Install Intel OpenCL Library
+        run: sudo apt-get install -y ocl-icd-opencl-dev
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
