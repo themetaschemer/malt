@@ -29,7 +29,10 @@ jobs:
 
           sudo apt-get install -y intel-oneapi-runtime-opencl
       - name: Install Intel OpenCL Library
-        run: sudo apt-get install -y ocl-icd-opencl-dev
+        run: |
+          sudo apt-get install -y ocl-icd-opencl-dev
+          ls -la /usr/lib/x86_64-linux-gnu/libOpenCL*
+
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
