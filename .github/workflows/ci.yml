@@ -10,12 +10,6 @@ jobs:
         racket-variant: ["BC", "CS"]
     steps:
       - uses: actions/checkout@v3
-      - uses: Bogdanp/setup-racket@v1.9.1
-        with:
-          architecture: x64
-          distribution: full
-          variant: ${{ matrix.racket-variant }}
-          version: ${{ matrix.racket-version }}
       - name: Install Intel OpenCL Runtime
         run: |
           # download the key to system keyring
@@ -32,8 +26,14 @@ jobs:
         run: |
           sudo apt-get install -y ocl-icd-opencl-dev
           ls -la /usr/lib/x86_64-linux-gnu/libOpenCL*
+          echo 'export $LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libOpenCL.so' >> $HOME/.bashrc
           echo $LD_LIBRARY_PATH
-
+      - uses: Bogdanp/setup-racket@v1.9.1
+        with:
+          architecture: x64
+          distribution: full
+          variant: ${{ matrix.racket-variant }}
+          version: ${{ matrix.racket-version }}
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
