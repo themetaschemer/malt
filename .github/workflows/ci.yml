@@ -26,8 +26,8 @@ jobs:
         run: |
           sudo apt-get install -y ocl-icd-opencl-dev
           ls -la /usr/lib/x86_64-linux-gnu/libOpenCL*
-          echo 'export $LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libOpenCL.so' >> $HOME/.bashrc
-          source $HOME/.bashrc
+          sudo echo 'export $LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libOpenCL.so' >> /etc/profile
+          sudo source /etc/profile
           echo $LD_LIBRARY_PATH
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
