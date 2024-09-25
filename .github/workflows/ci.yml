@@ -27,16 +27,15 @@ jobs:
       - name: Install Intel OpenCL Library
         run: |
           sudo apt-get install -y ocl-icd-opencl-dev
-          ls -la /usr/lib/x86_64-linux-gnu/libOpenCL*
-          echo $LD_LIBRARY_PATH
+          cd /usr/lib/racket
+          ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so
+          ls /usr/lib/racket
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
           distribution: full
           variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
-      - name: Print Racket Library Search Directories
-        run: racket -e '(require setup/dirs) (displayln "Library search directories:")(get-lib-search-dirs)'
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
