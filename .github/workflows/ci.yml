@@ -27,9 +27,9 @@ jobs:
       - name: Install Intel OpenCL Library
         run: |
           sudo apt-get install -y ocl-icd-opencl-dev
-          mkdir /usr/lib/racket
+          sudo mkdir /usr/lib/racket
           cd /usr/lib/racket
-          ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so
+          sudo ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so
           ls /usr/lib/racket
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
