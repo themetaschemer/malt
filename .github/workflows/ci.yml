@@ -30,7 +30,10 @@ jobs:
           sudo mkdir /usr/lib/racket
           cd /usr/lib/racket
           sudo ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so
-          ls /usr/lib/racket
+      - name: Debug OpenCL
+        run: |
+          lspci
+          sudo ls /etc/OpenCL/vendors/
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
