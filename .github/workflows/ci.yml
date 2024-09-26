@@ -42,6 +42,8 @@ jobs:
           distribution: full
           variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
+      - name: print library path
+        run: racket -e '(getenv "LD_LIBRARY_PATH")'
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
