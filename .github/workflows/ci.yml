@@ -35,6 +35,7 @@ jobs:
         run: |
           lspci
           sudo ls /etc/OpenCL/vendors/
+          sudo lscpu
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
