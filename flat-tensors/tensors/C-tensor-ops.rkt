@@ -26,7 +26,7 @@
     (cond
       ((= (size-of s) (flat-size t))
        (flat s (flat-store t) (flat-offset t)))
-      (else (error "Cannot reshape ~a to ~a~%" (flat-shape t) s)))))
+      (else (error 'tensor-reshape "Cannot reshape ~a to ~a~%" (flat-shape t) s)))))
 
 
 (include "test/test-C-tensor-ops.rkt")

@@ -7,7 +7,7 @@
   (λ (v0 i0 stride0
       v-out i-out stride-out)
     (vector-set! v-out i-out
-      (for/fold ([max 0.0])
+      (for/fold ([max -inf.0])
           ([i (in-range i0 (+ i0 stride0))])
         (let ((v (vector-ref v0 i)))
           (cond
