@@ -13,6 +13,8 @@
     (error "ext2-∇ is not provided by the learner implementation")))
 
 (provide
+ tolerance
+
  len ref refr
 
  tref tlen tmap list->tensor tensor build-tensor
@@ -39,7 +41,7 @@
  rectify flatten concat concat-n
 
  +-ρ --ρ *-ρ /-ρ rectify-ρ
- exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ
+ exp-ρ log-ρ expt-ρ sqrt-ρ sqr-ρ zeroes-ρ
  sum-ρ abs-ρ *-2-1-ρ argmax-ρ
  max-ρ sum-cols-ρ correlate-ρ flatten-ρ concat-ρ
 
