@@ -1,0 +1,12 @@
+(module+ test
+  (require rackunit)
+  (let ((a 2)
+        (b 3))
+    (check-true (<-0-0 a b))
+    (check-false (>-0-0 a b))
+    (check-true (<=-0-0 a b))
+    (check-false (>=-0-0 a b))
+    (check-false (=-0-0 a b))
+    (check-true (=-0-0 a a))
+    (check-true (zero? 0))
+    (check-false (zero? a))))

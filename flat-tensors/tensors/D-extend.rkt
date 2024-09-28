@@ -209,11 +209,12 @@
            (sf-z (shape-fn sf0))
            (stride-z (size-of sf-z))
            (vz (flat-store z))
+           (offz (flat-offset z))
 
            (g0 (new-vec size0 0.0)))
       (for ([iz (in-range 0 size-z stride-z)]
             [i0 (in-range off0 (+ off0 size0) stride0)])
-        (fᵈ g0 v0 i0 stride0 vz iz stride-z))
+        (fᵈ g0 v0 i0 stride0 vz (+ offz iz) stride-z))
       (flat s0 g0 0))))
 
 (define flat-ext2-ρ
@@ -384,4 +385,8 @@
 
 (include "test/test-D-extend.rkt")
 
-(provide ext1-ρ ext1-∇ ext2-ρ ext2-∇ expects-preallocated?)
+(provide ext1-ρ ext1-∇ ext2-ρ ext2-∇ expects-preallocated?
+         functional->preallocated-1-ρ functional->preallocated-1-∇
+         functional->preallocated-2-ρ functional->preallocated-2-∇
+         merge-shapes min-shape ext2-shapes idxs
+         flat-ext1-∇ flat-ext1-ρ flat-ext2-ρ scalarize ensure-flat)
