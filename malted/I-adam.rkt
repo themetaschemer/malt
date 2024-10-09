@@ -19,7 +19,7 @@
     (let ((r (smooth beta (ref pa 2) (sqr g))))
       (let ((alpha-hat (/ alpha (+ (sqrt r) epsilon)))
             (v (smooth mu (ref pa 1) g)))
-        (list (- (ref pa 0) (* alpha-hat v)) v  r)))))
+        (list (- (ref pa 0) (* alpha-hat v)) v r)))))
 
 (define adam-gradient-descent
   (gradient-descent

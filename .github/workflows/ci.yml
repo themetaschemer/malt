@@ -8,14 +8,42 @@ jobs:
       matrix:
         racket-version: ["stable", "current"]
         racket-variant: ["BC", "CS"]
+    env:
+      LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/
     steps:
       - uses: actions/checkout@v3
+      - name: Install Intel OpenCL Runtime
+        run: |
+          # download the key to system keyring
+          # wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+          # | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+
+          # # add signed entry to apt sources and configure the APT client to use Intel repository:
+          # echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+          # sudo apt update
+
+          # sudo apt-get install -y intel-oneapi-runtime-opencl
+          sudo apt-get install intel-opencl-icd
+      - name: Install Intel OpenCL Library
+        run: |
+          sudo apt-get install -y ocl-icd-opencl-dev
+          sudo mkdir /usr/lib/racket
+          cd /usr/lib/racket
+          sudo ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so
+      - name: Debug OpenCL
+        run: |
+          lspci
+          sudo ls /etc/OpenCL/vendors/
+          sudo lscpu
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
           distribution: full
           variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
+      - name: print library path
+        run: racket -e '(getenv "LD_LIBRARY_PATH")'
       - name: Installing malt and its dependencies
         run: raco pkg install --no-docs --auto --name malt
       - name: Compiling malt and building its docs
