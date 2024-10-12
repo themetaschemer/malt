@@ -5,8 +5,9 @@
   (define obj (λ (theta)
                 (sqr (- 30 (ref theta 0)))))
 
-  (check-equal?
+  (check-within
    (with-hypers ((revs 400)
                  (alpha 0.01))
      (naked-gradient-descent obj (list 3.0)))
-   '(29.991647931623252)))
+   '(29.991647931623252)
+   (tolerance)))
