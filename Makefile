@@ -10,11 +10,59 @@ TEST_FLAGS=-q
 # add sources be sure to update this section.
 #----------------------------------------
 
+LAZY_DIR=lazy
 LEARNER_DIR=learner
 FLAT_DIR=flat-tensors
+UNIFORM_DIR=uniform-tensors
+ACCELERATED_DIR=accelerated-tensors
 NESTED_DIR=nested-tensors
 TOOLS_DIR=tools
 MALTED_DIR=malted
+
+# lazy
+LAZY_TENSORS_DIR=$(LAZY_DIR)/tensors
+LAZY_AUTODIFF_DIR=$(LAZY_DIR)/autodiff
+LAZY_EXT_OPS_DIR=$(LAZY_DIR)/ext-ops
+
+LAZY_TENSORS_SOURCES=\
+  $(LAZY_TENSORS_DIR)/c0-ast.rkt\
+  $(LAZY_TENSORS_DIR)/c1-racket-runtime.rkt\
+  $(LAZY_TENSORS_DIR)/c2-interpreter.rkt\
+  $(LAZY_TENSORS_DIR)/c3-compiler.rkt\
+  $(LAZY_TENSORS_DIR)/0-lazy.rkt\
+  $(LAZY_TENSORS_DIR)/1-reflect.rkt\
+  $(LAZY_TENSORS_DIR)/A-equality.rkt\
+  $(LAZY_DIR)/tensors.rkt
+
+LAZY_AUTODIFF_SOURCES=\
+  $(LAZY_AUTODIFF_DIR)/A-autodiff.rkt\
+  $(LAZY_AUTODIFF_DIR)/B-prims.rkt\
+  $(LAZY_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(LAZY_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(LAZY_DIR)/autodiff.rkt
+
+LAZY_EXT_OPS_SOURCES=\
+  $(LAZY_EXT_OPS_DIR)/A-scalar-ops.rkt\
+  $(LAZY_EXT_OPS_DIR)/B-comparators.rkt\
+  $(LAZY_EXT_OPS_DIR)/C-star-2-1.rkt\
+  $(LAZY_EXT_OPS_DIR)/D-sum.rkt\
+  $(LAZY_EXT_OPS_DIR)/E-argmax.rkt\
+  $(LAZY_EXT_OPS_DIR)/F-max.rkt\
+  $(LAZY_EXT_OPS_DIR)/G-correlate.rkt\
+  $(LAZY_DIR)/ext-ops.rkt
+
+LAZY_LOADERS=\
+  $(LAZY_DIR)/no-duals-no-overrides.rkt\
+  $(LAZY_DIR)/no-duals.rkt\
+  $(LAZY_DIR)/no-overrides.rkt\
+  $(LAZY_DIR)/tensors.rkt\
+  $(LAZY_DIR)/autodiff.rkt\
+  $(LAZY_DIR)/ext-ops.rkt
+
+LAZY_SOURCES=$(LAZY_TENSORS_SOURCES)\
+	$(LAZY_AUTODIFF_SOURCES)\
+	$(LAZY_EXT_OPS_SOURCES)\
+	$(LAZY_LOADERS)
 
 # learner
 LEARNER_TENSORS_DIR=$(LEARNER_DIR)/tensors
@@ -102,12 +150,110 @@ FLAT_LOADERS=\
   $(FLAT_DIR)/no-overrides.rkt\
   $(FLAT_DIR)/tensors.rkt\
   $(FLAT_DIR)/autodiff.rkt\
+  $(FLAT_DIR)/ext-impl.rkt\
   $(FLAT_DIR)/ext-ops.rkt
 
 FLAT_SOURCES=$(FLAT_TENSORS_SOURCES)\
 	$(FLAT_AUTODIFF_SOURCES)\
 	$(FLAT_EXT_OPS_SOURCES)\
 	$(FLAT_LOADERS)
+
+# uniform-tensors
+UNIFORM_TENSORS_DIR=$(UNIFORM_DIR)/tensors
+UNIFORM_AUTODIFF_DIR=$(UNIFORM_DIR)/autodiff
+UNIFORM_EXT_OPS_DIR=$(UNIFORM_DIR)/ext-ops
+
+UNIFORM_TENSORS_SOURCES=\
+  $(UNIFORM_TENSORS_DIR)/0-vectors.rkt\
+  $(UNIFORM_TENSORS_DIR)/1-flats.rkt\
+  $(UNIFORM_TENSORS_DIR)/A-equality.rkt\
+  $(UNIFORM_TENSORS_DIR)/B-tensor-basics.rkt\
+  $(UNIFORM_TENSORS_DIR)/C-tensor-ops.rkt\
+  $(UNIFORM_TENSORS_DIR)/D-extend.rkt\
+  $(UNIFORM_DIR)/tensors.rkt
+
+UNIFORM_AUTODIFF_SOURCES=\
+  $(UNIFORM_AUTODIFF_DIR)/A-autodiff.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/B-prims.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(UNIFORM_AUTODIFF_DIR)/E-print.rkt\
+  $(UNIFORM_DIR)/autodiff.rkt
+
+UNIFORM_EXT_OPS_SOURCES=\
+  $(UNIFORM_EXT_OPS_DIR)/A-scalar-ops.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/B-comparators.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/C-star-2-1.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/D-sum.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/E-argmax.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/F-max.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/G-correlate.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/I-flatten.rkt\
+  $(UNIFORM_EXT_OPS_DIR)/K-concat.rkt\
+  $(UNIFORM_DIR)/ext-ops.rkt
+
+UNIFORM_LOADERS=\
+  $(UNIFORM_DIR)/no-duals-no-overrides.rkt\
+  $(UNIFORM_DIR)/no-duals.rkt\
+  $(UNIFORM_DIR)/no-overrides.rkt\
+  $(UNIFORM_DIR)/tensors.rkt\
+  $(UNIFORM_DIR)/autodiff.rkt\
+  $(UNIFORM_DIR)/ext-impl.rkt\
+  $(UNIFORM_DIR)/ext-ops.rkt
+
+UNIFORM_SOURCES=$(UNIFORM_TENSORS_SOURCES)\
+	$(UNIFORM_AUTODIFF_SOURCES)\
+	$(UNIFORM_EXT_OPS_SOURCES)\
+	$(UNIFORM_LOADERS)
+
+# accelerated-tensors
+ACCELERATED_TENSORS_DIR=$(ACCELERATED_DIR)/tensors
+ACCELERATED_AUTODIFF_DIR=$(ACCELERATED_DIR)/autodiff
+ACCELERATED_EXT_OPS_DIR=$(ACCELERATED_DIR)/ext-ops
+
+ACCELERATED_TENSORS_SOURCES=\
+  $(ACCELERATED_TENSORS_DIR)/0-vectors.rkt\
+  $(ACCELERATED_TENSORS_DIR)/1-flats.rkt\
+  $(ACCELERATED_TENSORS_DIR)/2-acc-runtime.rkt\
+  $(ACCELERATED_TENSORS_DIR)/A-equality.rkt\
+  $(ACCELERATED_TENSORS_DIR)/B-tensor-basics.rkt\
+  $(ACCELERATED_TENSORS_DIR)/C-tensor-ops.rkt\
+  $(ACCELERATED_TENSORS_DIR)/D-extend.rkt\
+  $(ACCELERATED_DIR)/tensors.rkt
+
+ACCELERATED_AUTODIFF_SOURCES=\
+  $(ACCELERATED_AUTODIFF_DIR)/A-autodiff.rkt\
+  $(ACCELERATED_AUTODIFF_DIR)/B-prims.rkt\
+  $(ACCELERATED_AUTODIFF_DIR)/C-dualized-tensor-ops.rkt\
+  $(ACCELERATED_AUTODIFF_DIR)/D-test-helpers.rkt\
+  $(ACCELERATED_AUTODIFF_DIR)/E-print.rkt\
+  $(ACCELERATED_DIR)/autodiff.rkt
+
+ACCELERATED_EXT_OPS_SOURCES=\
+  $(ACCELERATED_EXT_OPS_DIR)/A-scalar-ops.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/B-comparators.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/C-star-2-1.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/D-sum.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/E-argmax.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/F-max.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/G-correlate.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/I-flatten.rkt\
+  $(ACCELERATED_EXT_OPS_DIR)/K-concat.rkt\
+  $(ACCELERATED_DIR)/ext-ops.rkt
+
+ACCELERATED_LOADERS=\
+  $(ACCELERATED_DIR)/no-duals-no-overrides.rkt\
+  $(ACCELERATED_DIR)/no-duals.rkt\
+  $(ACCELERATED_DIR)/no-overrides.rkt\
+  $(ACCELERATED_DIR)/tensors.rkt\
+  $(ACCELERATED_DIR)/autodiff.rkt\
+  $(ACCELERATED_DIR)/ext-impl.rkt\
+  $(ACCELERATED_DIR)/ext-ops.rkt
+
+ACCELERATED_SOURCES=$(ACCELERATED_TENSORS_SOURCES)\
+	$(ACCELERATED_AUTODIFF_SOURCES)\
+	$(ACCELERATED_EXT_OPS_SOURCES)\
+	$(ACCELERATED_LOADERS)
 
 # nested-tensors
 NESTED_TENSORS_DIR=$(NESTED_DIR)/tensors
@@ -182,7 +328,10 @@ MALTED_SOURCES=\
 
 # All the sources together, plus entry points
 SOURCES=$(LEARNER_SOURCES)\
+  $(LAZY_SOURCES)\
   $(FLAT_SOURCES)\
+  $(UNIFORM_SOURCES)\
+  $(ACCELERATED_SOURCES)\
   $(NESTED_SOURCES)\
   $(TOOLS_SOURCES)\
   $(MALTED_SOURCES)\
