@@ -3,7 +3,7 @@
   (require "../impl.rkt")
 
   (check-dual-equal? (zeroes (tensor 1 2 3))
-                (tensor 0.0 0.0 0.0))
+                     (tensor 0.0 0.0 0.0))
 
   (check-dual-equal? (smooth 0.9 31 -8) 27.1)
 
