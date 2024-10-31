@@ -34,6 +34,12 @@
       [`(getenv ,name) (getenv name)]
       [x x])))
 
+(define (get-boolean-param bparam)
+  (match (get-param bparam)
+      ("yes" #t)
+      (#t #t)
+      (_ #f)))
+
 (define tensor-implementation
   (λ ()
     (get-param 'tensor-implementation)))
@@ -44,7 +50,7 @@
 
 (define debug-kernel?
   (λ ()
-    (get-param 'debug-kernel?)))
+    (get-boolean-param 'debug-kernel?)))
 
 (define opencl-device-type
   (λ ()
@@ -54,12 +60,17 @@
       [(? symbol? x) x]
       [e (error 'opencl-device-type:err "Invalid paramater: ~a" e)])))
 
+(define disable-unsafe-tests?
+  (λ ()
+    (get-boolean-param 'disable-unsafe-tests?)))
+
 ;; Default settings
 (define default-preferences
   `((tensor-implementation learner)
     (accelerate? #t)
-    (debug-kernel? #f)
-    (opencl-device-type (getenv "CL_DEVICE_TYPE"))))
+    (debug-kernel? (getenv "MALT_DEBUG_KERNEL"))
+    (opencl-device-type (getenv "CL_DEVICE_TYPE"))
+    (disable-unsafe-tests? (getenv "MALT_DISABLE_UNSAFE_TESTS"))))
 
 (when (not (settings))
   (init-settings))
