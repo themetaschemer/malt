@@ -11,6 +11,8 @@ jobs:
     env:
       LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/
       CL_DEVICE_TYPE: CL_DEVICE_TYPE_CPU
+      MALT_DISABLE_UNSAFE_TESTS: yes
+      MALT_DEBUG_KERNEL: yes
     steps:
       - uses: actions/checkout@v3
       - name: Install Intel OpenCL Library
