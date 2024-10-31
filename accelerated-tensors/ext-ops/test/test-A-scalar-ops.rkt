@@ -1,6 +1,7 @@
 (module+ test
   (require rackunit)
   (require (only-in "../tensors.rkt" tensor))
+  (require "../../utils.rkt")
 
   ;; Check basic numericals
   (let ((a 2)
@@ -38,27 +39,36 @@
 
   (let ((a (tensor 2.0 3.0 4.0))
         (b (tensor 3.0 8.0 9.0)))
-    (check-ρ-∇ (d+ a b) (tensor 5.0 11.0 13.0) (list (tensor 1.0 1.0 1.0) (tensor 1.0 1.0 1.0)))
-    (check-ρ-∇ (d- a b) (tensor -1 -5 -5) (list (tensor 1.0 1.0 1.0) (tensor -1.0 -1.0 -1.0)))
-    (check-ρ-∇ (d* a b) (tensor 6.0 24.0 36.0) (list (tensor 3.0 8.0 9.0) (tensor 2.0 3.0 4.0)))
-    (check-ρ-∇ (d/ a b)
-               (tensor (/ 2.0 3.0) (/ 3.0 8.0) (/ 4.0 9.0))
-               (list (tensor 0.3333333333333333 0.125 0.1111111111111111)
-                     (tensor -0.2222222222222222 -0.046875 -0.04938271604938271)))
-    (check-ρ-∇ (d-exp a) (tensor (exp 2.0) (exp 3.0) (exp 4.0))
-               (list (tensor (exp 2.0) (exp 3.0) (exp 4.0))))
-    (check-ρ-∇ (d-log a) (tensor (log 2.0) (log 3.0) (log 4.0))
-               (list (tensor 0.5 (/ 1 3.0) (/ 1 4.0))))
-    (check-ρ-∇ (d-expt a b)
-               (tensor (expt 2.0 3.0) (expt 3.0 8.0) (expt 4.0 9.0))
-               (list (tensor 12.0 17496.0 589824.0)
-                     (tensor 5.545177444479562 7207.9952259514685 363408.7490014126)))
+    (unsafe-test
+     (check-ρ-∇ (d+ a b) (tensor 5.0 11.0 13.0) (list (tensor 1.0 1.0 1.0) (tensor 1.0 1.0 1.0))))
+    (unsafe-test
+     (check-ρ-∇ (d- a b) (tensor -1 -5 -5) (list (tensor 1.0 1.0 1.0) (tensor -1.0 -1.0 -1.0))))
+    (unsafe-test
+     (check-ρ-∇ (d* a b) (tensor 6.0 24.0 36.0) (list (tensor 3.0 8.0 9.0) (tensor 2.0 3.0 4.0))))
+    (unsafe-test
+     (check-ρ-∇ (d/ a b)
+                (tensor (/ 2.0 3.0) (/ 3.0 8.0) (/ 4.0 9.0))
+                (list (tensor 0.3333333333333333 0.125 0.1111111111111111)
+                      (tensor -0.2222222222222222 -0.046875 -0.04938271604938271))))
+    (unsafe-test
+     (check-ρ-∇ (d-exp a) (tensor (exp 2.0) (exp 3.0) (exp 4.0))
+                (list (tensor (exp 2.0) (exp 3.0) (exp 4.0)))))
+    (unsafe-test
+     (check-ρ-∇ (d-log a) (tensor (log 2.0) (log 3.0) (log 4.0))
+                (list (tensor 0.5 (/ 1 3.0) (/ 1 4.0)))))
+    (unsafe-test
+     (check-ρ-∇ (d-expt a b)
+                (tensor (expt 2.0 3.0) (expt 3.0 8.0) (expt 4.0 9.0))
+                (list (tensor 12.0 17496.0 589824.0)
+                      (tensor 5.545177444479562 7207.9952259514685 363408.7490014126))))
 
-    (check-ρ-∇ (d-sqrt a)
-               (tensor (sqrt 2.0) (sqrt 3.0) (sqrt 4.0))
-               (list (tensor 0.3535533905932738 0.28867513459481287 0.25)))
+    (unsafe-test
+     (check-ρ-∇ (d-sqrt a)
+                (tensor (sqrt 2.0) (sqrt 3.0) (sqrt 4.0))
+                (list (tensor 0.3535533905932738 0.28867513459481287 0.25))))
 
-    (check-ρ-∇ (d-sqr b) (tensor 9.0 64.0 81.0) (list (tensor 6.0 16.0 18.0)))
+    (unsafe-test
+     (check-ρ-∇ (d-sqr b) (tensor 9.0 64.0 81.0) (list (tensor 6.0 16.0 18.0))))
 
     (define z
       (lambda (x y)
@@ -66,11 +76,15 @@
 
     (let ((c (dual* (tensor 2.0 3.0 4.0)))
           (d (dual* (tensor 2.0 3.0 4.0))))
-      (check-dual-equal?
-       ((∇¹ z) c d)
-       (list (tensor 2.5 3.3333333333333335 4.25) (tensor 2.0 3.0 4.0))))
+      (unsafe-test
+       (check-dual-equal?
+        ((∇¹ z) c d)
+        (list (tensor 2.5 3.3333333333333335 4.25) (tensor 2.0 3.0 4.0)))))
 
-    (check-dual-equal? ((∇¹ z) a a) (list (tensor 2.5 3.3333333333333335 4.25) (tensor 2.0 3.0 4.0))))
+    (unsafe-test
+     (check-dual-equal? ((∇¹ z) a a)
+                        (list (tensor 2.5 3.3333333333333335 4.25)
+                              (tensor 2.0 3.0 4.0)))))
 
   ;; Check numericals with lists
   (let ((x (dual* 3))
@@ -110,13 +124,19 @@
 
   (let ((a 7)
         (b (tensor 13)))
-    (check-ρ-∇ (d+ a b) (tensor 20) (list 1.0 (tensor 1.0)))
-    (check-ρ-∇ (d* a b) (tensor 91) (list 13.0 (tensor 7.0)))
-    (check-ρ-∇ (d/ a b) (tensor 7/13) (list 0.07692 (tensor -0.04142))))
+    (unsafe-test
+     (check-ρ-∇ (d+ a b) (tensor 20) (list 1.0 (tensor 1.0))))
+    (unsafe-test
+     (check-ρ-∇ (d* a b) (tensor 91) (list 13.0 (tensor 7.0))))
+    (unsafe-test
+     (check-ρ-∇ (d/ a b) (tensor 7/13) (list 0.07692 (tensor -0.04142)))))
 
   (let ((a 7)
         (b (tensor 13 15)))
-    (check-ρ-∇ (d+ a b) (tensor 20 22) (list 2.0 (tensor 1.0 1.0)))
-    (check-ρ-∇ (d* a b) (tensor 91 105) (list 28.0 (tensor 7.0 7.0)))
-    (check-ρ-∇ (d/ a b) (tensor 7/13 7/15)
-               (list 0.14358 (tensor -0.04142 -0.03111)))))
+    (unsafe-test
+     (check-ρ-∇ (d+ a b) (tensor 20 22) (list 2.0 (tensor 1.0 1.0))))
+    (unsafe-test
+     (check-ρ-∇ (d* a b) (tensor 91 105) (list 28.0 (tensor 7.0 7.0))))
+    (unsafe-test
+     (check-ρ-∇ (d/ a b) (tensor 7/13 7/15)
+                (list 0.14358 (tensor -0.04142 -0.03111))))))

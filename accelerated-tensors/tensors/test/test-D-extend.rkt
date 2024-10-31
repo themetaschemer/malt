@@ -3,6 +3,7 @@
   (require string-interpolation)
   (require "A-equality.rkt")
   (require "B-tensor-basics.rkt")
+  (require "../../utils.rkt")
 
   (define sum-f
     (λ (in-v iᵢ sᵢ out-v iₒ sₒ)
@@ -66,28 +67,30 @@ EOF
       (list (* 2 (car in-f-shape)))))
 
   (define dup (ext1-ρ dup-f dup-f-acc 1 dup-shape-f))
-  (check-true (equal-elements? (dup t0)
-                               (tensor 0 2 4 6 0 2 4 6
-                                       8 10 12 14 8 10 12 14
-                                       16 18 20 22 16 18 20 22
-                                       24 26 28 30 24 26 28 30
-                                       32 34 36 38 32 34 36 38
-                                       40 42 44 46 40 42 44 46)))
+  (unsafe-test
+   (check-tensor-equal? (dup t0)
+                        (tensor 0 2 4 6 0 2 4 6
+                                8 10 12 14 8 10 12 14
+                                16 18 20 22 16 18 20 22
+                                24 26 28 30 24 26 28 30
+                                32 34 36 38 32 34 36 38
+                                40 42 44 46 40 42 44 46)))
 
   (define abs* (ext1-ρ abs (λ (x) "fabs(@{x})") 0 (λ _ '())))
-  (check-true (equal-elements? (abs* (flat '(2 3 4)
-                                          (build-vec 24
-                                                     (λ (i)
-                                                       (*
-                                                        (if (even? i) -1 1)
-                                                        (* 2 i))))
-                                          0))
-                               (tensor 0 2 4 6
-                                       8 10 12 14
-                                       16 18 20 22
-                                       24 26 28 30
-                                       32 34 36 38
-                                       40 42 44 46)))
+  (unsafe-test
+   (check-tensor-equal? (abs* (flat '(2 3 4)
+                                    (build-vec 24
+                                               (λ (i)
+                                                 (*
+                                                  (if (even? i) -1 1)
+                                                  (* 2 i))))
+                                    0))
+                        (tensor 0 2 4 6
+                                8 10 12 14
+                                16 18 20 22
+                                24 26 28 30
+                                32 34 36 38
+                                40 42 44 46)))
 
   (define s0 '(3 4 5 6))
   (define s1 '(3 7 6))
@@ -128,14 +131,15 @@ EOF
   (define *-ρ (ext2-ρ * (λ (a b) "@{a} * @{b}") 0 0))
   (define t0sqr (*-ρ t0 t0))
 
-  (check-true (equal-elements?
-               t0sqr
-               (tensor 0  4 16 36
-                       64 100 144 196
-                       256 324 400 484
-                       576 676 784 900
-                       1024 1156 1296 1444
-                       1600 1764 1936 2116)))
+  (unsafe-test
+   (check-tensor-equal?
+    t0sqr
+    (tensor 0  4 16 36
+            64 100 144 196
+            256 324 400 484
+            576 676 784 900
+            1024 1156 1296 1444
+            1600 1764 1936 2116)))
 
   (define *-2-1-f
     (λ (v0 i0 s0 v1 i1 s1 vout iout sout)
@@ -244,20 +248,26 @@ EOF
               (new-vec size-t 1.0)
               0))))
 
-  (check-true (equal-elements? (d-sqr r1-td (one-like r1-td)) (tensor 6.0 8.0 10.0)))
+  (unsafe-test
+   (check-true (equal-elements? (d-sqr r1-td (one-like r1-td)) (tensor 6.0 8.0 10.0))))
 
   (let ((gsqr (d-sqr r2-td (one-like r2-td))))
-    (check-tensor-equal? gsqr (reshape '(2 3) (tensor 6.0 8.0 10.0 14.0 16.0 18.0))))
+    (unsafe-test
+     (check-tensor-equal? gsqr (reshape '(2 3) (tensor 6.0 8.0 10.0 14.0 16.0 18.0)))))
 
   (define d+ (ext2-∇ +ᵈ +ᵈ-acc 0 0 scalar-shape))
 
   (let-values (((da db) (d+ r1-td r1-td (one-like r1-td))))
-    (check-tensor-equal? da (tensor 1.0 1.0 1.0))
-    (check-tensor-equal? db (tensor 1.0 1.0 1.0)))
+    (unsafe-test
+     (check-tensor-equal? da (tensor 1.0 1.0 1.0)))
+    (unsafe-test
+     (check-tensor-equal? db (tensor 1.0 1.0 1.0))))
 
   (let-values (((da db) (d+ r1-td r2-td (one-like r2-td))))
-    (check-tensor-equal? da (tensor 2.0 2.0 2.0))
-    (check-tensor-equal? db (reshape '(2 3) (tensor 1.0 1.0 1.0 1.0 1.0 1.0))))
+    (unsafe-test
+     (check-tensor-equal? da (tensor 2.0 2.0 2.0)))
+    (unsafe-test
+     (check-tensor-equal? db (reshape '(2 3) (tensor 1.0 1.0 1.0 1.0 1.0 1.0)))))
 
   (define *∇ (ext2-∇ (λ (a b z) (values (* z b) (* z a)))
                      (λ (a b z) (values "@{z} * @{b}" "@{z} * @{a}" ))
@@ -265,8 +275,10 @@ EOF
                      0))
 
   (let-values (((gt gu) (*∇ (tensor 2.0 3.0 4.0) (tensor 1.0 2.0 3.0) (tensor 1.0 1.0 1.0))))
-    (check-tensor-equal? gt (tensor 1.0 2.0 3.0))
-    (check-tensor-equal? gu (tensor 2.0 3.0 4.0)))
+    (unsafe-test
+     (check-tensor-equal? gt (tensor 1.0 2.0 3.0)))
+    (unsafe-test
+     (check-tensor-equal? gu (tensor 2.0 3.0 4.0))))
 
   (define sum-1-∇
     (λ (g t it st vz iz sz)
@@ -286,10 +298,12 @@ EOF
 
   (let ((gt (sum-∇ (tensor 2.0 3.0 4.0)
                    1.0)))
-    (check-tensor-equal? gt (tensor 1.0 1.0 1.0)))
+    (unsafe-test
+     (check-tensor-equal? gt (tensor 1.0 1.0 1.0))))
 
   (let ((gt (sum-∇ (tensor (tensor 2.0 3.0 4.0)
                            (tensor 2.0 3.0 4.0))
                    (tensor 2.0 1.0))))
-    (check-tensor-equal? gt (tensor (tensor 2.0 2.0 2.0)
-                                    (tensor 1.0 1.0 1.0)))))
+    (unsafe-test
+     (check-tensor-equal? gt (tensor (tensor 2.0 2.0 2.0)
+                                     (tensor 1.0 1.0 1.0))))))

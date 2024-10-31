@@ -1,6 +1,7 @@
 (module+ test
   (require rackunit)
   (require (only-in "../tensors.rkt" tensor ext2-∇ check-tensor-equal?))
+  (require "../../utils.rkt")
 
   ;; for testing b = 4
   ;;             m = 3
@@ -61,28 +62,30 @@
                                             (tensor 1.0 1.0 1.0 1.0)
                                             (tensor 1.0 1.0 1.0 1.0)
                                             (tensor 1.0 1.0 1.0 1.0)))))
-    (check-tensor-equal? filter-∇
-                         (tensor
-                          (tensor (tensor 25.0 30.0)
-                                  (tensor 36.0 42.0)
-                                  (tensor 35.0 40.0))
-                          (tensor (tensor 25.0 30.0)
-                                  (tensor 36.0 42.0)
-                                  (tensor 35.0 40.0))
-                          (tensor (tensor 25.0 30.0)
-                                  (tensor 36.0 42.0)
-                                  (tensor 35.0 40.0))
-                          (tensor (tensor 25.0 30.0)
-                                  (tensor 36.0 42.0)
-                                  (tensor 35.0 40.0))))
-    (check-tensor-equal? signal-∇
-                         ;; Should be of size nb
-                         (tensor (tensor 88.0 96.0)
-                                 (tensor 144.0 156.0)
-                                 (tensor 144.0 156.0)
-                                 (tensor 144.0 156.0)
-                                 (tensor 144.0 156.0)
-                                 (tensor 104.0 112.0))))
+    (unsafe-test
+     (check-tensor-equal? filter-∇
+                          (tensor
+                           (tensor (tensor 25.0 30.0)
+                                   (tensor 36.0 42.0)
+                                   (tensor 35.0 40.0))
+                           (tensor (tensor 25.0 30.0)
+                                   (tensor 36.0 42.0)
+                                   (tensor 35.0 40.0))
+                           (tensor (tensor 25.0 30.0)
+                                   (tensor 36.0 42.0)
+                                   (tensor 35.0 40.0))
+                           (tensor (tensor 25.0 30.0)
+                                   (tensor 36.0 42.0)
+                                   (tensor 35.0 40.0)))))
+    (unsafe-test
+     (check-tensor-equal? signal-∇
+                          ;; Should be of size nb
+                          (tensor (tensor 88.0 96.0)
+                                  (tensor 144.0 156.0)
+                                  (tensor 144.0 156.0)
+                                  (tensor 144.0 156.0)
+                                  (tensor 144.0 156.0)
+                                  (tensor 104.0 112.0)))))
 
   (check-dual-equal? (d-correlate bank signal)
                      ;; Should be of size nb
@@ -94,25 +97,27 @@
                              (tensor 110.0 362.0 614.0 866.0)))
 
   (let ((gs ((∇¹ d-correlate) bank signal)))
-    (check-dual-equal? (car gs)
-                       (tensor
-                        (tensor (tensor 25.0 30.0)
-                                (tensor 36.0 42.0)
-                                (tensor 35.0 40.0))
-                        (tensor (tensor 25.0 30.0)
-                                (tensor 36.0 42.0)
-                                (tensor 35.0 40.0))
-                        (tensor (tensor 25.0 30.0)
-                                (tensor 36.0 42.0)
-                                (tensor 35.0 40.0))
-                        (tensor (tensor 25.0 30.0)
-                                (tensor 36.0 42.0)
-                                (tensor 35.0 40.0))))
-    (check-dual-equal? (cadr gs)
-                       ;; Should be of size nb
-                       (tensor (tensor 88.0 96.0)
-                               (tensor 144.0 156.0)
-                               (tensor 144.0 156.0)
-                               (tensor 144.0 156.0)
-                               (tensor 144.0 156.0)
-                               (tensor 104.0 112.0)))))
+    (unsafe-test
+     (check-dual-equal? (car gs)
+                        (tensor
+                         (tensor (tensor 25.0 30.0)
+                                 (tensor 36.0 42.0)
+                                 (tensor 35.0 40.0))
+                         (tensor (tensor 25.0 30.0)
+                                 (tensor 36.0 42.0)
+                                 (tensor 35.0 40.0))
+                         (tensor (tensor 25.0 30.0)
+                                 (tensor 36.0 42.0)
+                                 (tensor 35.0 40.0))
+                         (tensor (tensor 25.0 30.0)
+                                 (tensor 36.0 42.0)
+                                 (tensor 35.0 40.0)))))
+    (unsafe-test
+     (check-dual-equal? (cadr gs)
+                        ;; Should be of size nb
+                        (tensor (tensor 88.0 96.0)
+                                (tensor 144.0 156.0)
+                                (tensor 144.0 156.0)
+                                (tensor 144.0 156.0)
+                                (tensor 144.0 156.0)
+                                (tensor 104.0 112.0))))))

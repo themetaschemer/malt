@@ -75,4 +75,4 @@
 (when (not (settings))
   (init-settings))
 
-(provide tensor-implementation accelerate? debug-kernel? opencl-device-type)
+(provide tensor-implementation accelerate? debug-kernel? opencl-device-type disable-unsafe-tests?)
