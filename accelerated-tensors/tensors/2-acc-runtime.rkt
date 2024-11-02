@@ -7,6 +7,7 @@
          file/xxhash32
          "0-vectors.rkt"
          "../../impl-loader.rkt"
+         "../../utils.rkt"
          "ext2-strides.rkt")
 
 
@@ -200,8 +201,7 @@ EOF
                                                  1
                                                  (string->bytes/utf-8
                                                   kernel-code))))
-       (clBuildProgram program (vector (device)) (make-bytes 0))
-       (print-cl-build-log program #f)
+       (clBuildProgram^ program (vector (device)) (make-bytes 0) print-cl-build-log #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf0)
        (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -297,8 +297,7 @@ EOF
                                                  1
                                                  (string->bytes/utf-8
                                                   kernel-code))))
-       (clBuildProgram program (vector (device)) (make-bytes 0))
-       (print-cl-build-log program #f)
+       (clBuildProgram^ program (vector (device)) (make-bytes 0) print-cl-build-log #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf-g)
        (clSetKernelArg:_cl_mem kernel 1 buf0)
@@ -418,8 +417,7 @@ EOF
                       (make-vector
                        1
                        (string->bytes/utf-8 kernel-code))))
-       (clBuildProgram program (vector (device)) (make-bytes 0))
-       (print-cl-build-log program #f)
+       (clBuildProgram^ program (vector (device)) (make-bytes 0) print-cl-build-log #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf0)
        (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -600,8 +598,7 @@ EOF
        (set! program (clCreateProgramWithSource
                       (context)
                       (make-vector 1 (string->bytes/utf-8 kernel-code))))
-       (clBuildProgram program (vector (device)) (make-bytes 0))
-       (print-cl-build-log program #f)
+       (clBuildProgram^ program (vector (device)) (make-bytes 0) print-cl-build-log #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf-g0)
        (clSetKernelArg:_cl_mem kernel 1 buf-g1)
