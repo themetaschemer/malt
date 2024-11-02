@@ -34,7 +34,8 @@ jobs:
 
             sudo apt update
 
-            sudo apt-get install -y pocl-opencl-icd intel-oneapi-runtime-opencl
+            #sudo apt-get install -y pocl-opencl-icd intel-oneapi-runtime-opencl
+            sudo apt-get install -y intel-oneapi-runtime-opencl
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
