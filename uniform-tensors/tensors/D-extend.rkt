@@ -189,10 +189,9 @@
            (s-out (merge-shapes s0 min-rank sf-out))
            (size-out (size-of s-out))
            (v-out (new-vec size-out 0.0)))
-      (for ([i-out (in-range 0 size-out stride-out)]
-            #;[i0 (in-range off0 (+ off0 size0) stride0)])
-        (define i0 (+ off0 (* (/ i-out stride-out) stride0)))
-        (f v0 i0 stride0 v-out i-out stride-out))
+      (for ([i-out (in-range 0 size-out stride-out)])
+        (let ((i0 (+ off0 (* (/ i-out stride-out) stride0))))
+          (f v0 i0 stride0 v-out i-out stride-out)))
       (flat s-out v-out 0))))
 
 (define flat-ext1-∇
@@ -212,10 +211,9 @@
            (vz (flat-store z))
 
            (g0 (new-vec size0 0.0)))
-      (for ([iz (in-range 0 size-z stride-z)]
-            #;[i0 (in-range off0 (+ off0 size0) stride0)])
-        (define i0 (+ off0 (* (/ iz stride-z) stride0)))
-        (fᵈ g0 v0 i0 stride0 vz iz stride-z))
+      (for ([iz (in-range 0 size-z stride-z)])
+        (let ((i0 (+ off0 (* (/ iz stride-z) stride0))))
+          (fᵈ g0 v0 i0 stride0 vz iz stride-z)))
       (flat s0 g0 0))))
 
 (define flat-ext2-ρ
