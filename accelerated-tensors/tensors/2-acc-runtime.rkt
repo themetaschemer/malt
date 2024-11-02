@@ -178,8 +178,7 @@ EOF
   (when (debug-kernel?)
     (printf "Number of GPU threads: ~a~n" (/ size-out stride-out))
     (printf "Input size: ~a~n" size0)
-    (printf "Output size: ~a~n" size-out)
-    (printf "Kernel Code:~n~a~n" kernel-code))
+    (printf "Output size: ~a~n" size-out))
   (let* ([buf0 #f]
          [buf-out #f]
          [program #f]
@@ -202,6 +201,7 @@ EOF
                                                  (string->bytes/utf-8
                                                   kernel-code))))
        (clBuildProgram program (vector (device)) (make-bytes 0))
+       (print-cl-build-log program #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf0)
        (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -269,8 +269,7 @@ EOF
   (when (debug-kernel?)
     (printf "Number of GPU threads: ~a~n" (/ size-z stride-z))
     (printf "Input size: ~a~n" size0)
-    (printf "Output size: ~a~n" size-z)
-    (printf "Kernel Code:~n~a~n" kernel-code))
+    (printf "Output size: ~a~n" size-z))
   (let* ([buf0 #f]
          [buf-z #f]
          [buf-g #f]
@@ -299,6 +298,7 @@ EOF
                                                  (string->bytes/utf-8
                                                   kernel-code))))
        (clBuildProgram program (vector (device)) (make-bytes 0))
+       (print-cl-build-log program #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf-g)
        (clSetKernelArg:_cl_mem kernel 1 buf0)
@@ -390,8 +390,7 @@ EOF
     (printf "Number of GPU threads: ~a~n" (/ size-out stride-out))
     (printf "Input 0 size: ~a~n" size0)
     (printf "Input 1 size: ~a~n" size1)
-    (printf "Output size: ~a~n" size-out)
-    (printf "Kernel Code:~n~a~n" kernel-code))
+    (printf "Output size: ~a~n" size-out))
   (let* ([buf0 #f]
          [buf1 #f]
          [buf-out #f]
@@ -420,6 +419,7 @@ EOF
                        1
                        (string->bytes/utf-8 kernel-code))))
        (clBuildProgram program (vector (device)) (make-bytes 0))
+       (print-cl-build-log program #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf0)
        (clSetKernelArg:_cl_int kernel 1 stride0)
@@ -561,8 +561,7 @@ EOF
                                              (/ size1 stride1)))
     (printf "Input 0 size: ~a~n" size0)
     (printf "Input 1 size: ~a~n" size1)
-    (printf "Output size: ~a~n" size-z)
-    (printf "Kernel Code:~n~a~n" kernel-code))
+    (printf "Output size: ~a~n" size-z))
   (let* ([global-work-size (max (/ size0 stride0)
                                 (/ size1 stride1))]
          [buf0 #f]
@@ -602,6 +601,7 @@ EOF
                       (context)
                       (make-vector 1 (string->bytes/utf-8 kernel-code))))
        (clBuildProgram program (vector (device)) (make-bytes 0))
+       (print-cl-build-log program #f)
        (set! kernel (clCreateKernel program (string->bytes/utf-8 ker-name)))
        (clSetKernelArg:_cl_mem kernel 0 buf-g0)
        (clSetKernelArg:_cl_mem kernel 1 buf-g1)
