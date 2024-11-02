@@ -41,8 +41,9 @@ EOF
               (* 2 i)))
           0))
 
-  (check-true (equal-elements? (sum t0)
-                               (tensor 12.0 44.0 76.0 108.0 140.0 172.0)))
+  (unsafe-test
+   (check-tensor-equal?  (sum t0)
+                         (tensor 12.0 44.0 76.0 108.0 140.0 172.0)))
 
 
   (define dup-f
