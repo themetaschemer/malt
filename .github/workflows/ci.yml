@@ -12,7 +12,7 @@ jobs:
       LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/
       CL_DEVICE_TYPE: CL_DEVICE_TYPE_CPU
       MALT_DISABLE_UNSAFE_TESTS: yes
-      MALT_DEBUG_KERNEL: yes
+      MALT_DEBUG_KERNEL: no
     steps:
       - uses: actions/checkout@v3
       - name: Install Intel OpenCL Library
@@ -30,10 +30,7 @@ jobs:
 
             # add signed entry to apt sources and configure the APT client to use Intel repository:
             echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-
             sudo apt update
-
-            #sudo apt-get install -y pocl-opencl-icd intel-oneapi-runtime-opencl
             sudo apt-get install -y intel-oneapi-runtime-opencl
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
