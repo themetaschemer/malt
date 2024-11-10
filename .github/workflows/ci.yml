@@ -8,8 +8,30 @@ jobs:
       matrix:
         racket-version: ["stable", "current"]
         racket-variant: ["BC", "CS"]
+    env:
+      LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/
+      CL_DEVICE_TYPE: CL_DEVICE_TYPE_CPU
+      MALT_DISABLE_UNSAFE_TESTS: yes
+      MALT_DEBUG_KERNEL: no
     steps:
       - uses: actions/checkout@v3
+      - name: Install Intel OpenCL Library
+        run: |
+          sudo apt update
+          sudo apt-get install -y ocl-icd-opencl-dev
+          sudo mkdir /usr/lib/racket
+          cd /usr/lib/racket
+          sudo ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so
+      - name: Install Intel OpenCL Runtime
+        run: |
+            # download the key to system keyring
+            wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+
+            # add signed entry to apt sources and configure the APT client to use Intel repository:
+            echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+            sudo apt update
+            sudo apt-get install -y intel-oneapi-runtime-opencl
       - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
@@ -21,4 +43,4 @@ jobs:
       - name: Compiling malt and building its docs
         run: raco setup --check-pkg-deps --unused-pkg-deps malt
       - name: Testing malt
-        run: raco test -x -p malt
+        run: make

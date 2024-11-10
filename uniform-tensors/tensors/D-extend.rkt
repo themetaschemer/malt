@@ -209,6 +209,7 @@
            (sf-z (shape-fn sf0))
            (stride-z (size-of sf-z))
            (vz (flat-store z))
+           (offz (flat-offset z))
 
            (g0 (new-vec size0 0.0)))
       (for ([iz (in-range 0 size-z stride-z)])
